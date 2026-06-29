@@ -29,6 +29,13 @@ struct AboutPopover: View {
     var onUninstall: (() -> Void)?
 
     @State private var confirmingRemoval = false
+    @State private var showActions = false
+
+    init(onCheckForUpdates: (() -> Void)? = nil, onUninstall: (() -> Void)? = nil, showingActions: Bool = false) {
+        self.onCheckForUpdates = onCheckForUpdates
+        self.onUninstall = onUninstall
+        _showActions = State(initialValue: showingActions)
+    }
 
     private var versionLine: String {
         let short = Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "0.1.0"
@@ -58,10 +65,25 @@ struct AboutPopover: View {
                 Spacer(minLength: 0)
 
                 if onCheckForUpdates != nil || onUninstall != nil {
-                    AboutActionsMenu(
-                        onCheckForUpdates: onCheckForUpdates,
-                        onRemove: onUninstall == nil ? nil : { confirmingRemoval = true }
-                    )
+                    EllipsisToggle(isExpanded: $showActions)
+                }
+            }
+
+            // Inline actions revealed by "…": no nested popover, so no focus churn / flicker.
+            if showActions {
+                VStack(alignment: .leading, spacing: 1) {
+                    if let onCheckForUpdates {
+                        AboutMenuRow(title: "Check for Updates", systemImage: "arrow.triangle.2.circlepath") {
+                            showActions = false
+                            onCheckForUpdates()
+                        }
+                    }
+                    if onUninstall != nil {
+                        AboutMenuRow(title: "Remove RememBar…", systemImage: "trash", destructive: true) {
+                            showActions = false
+                            confirmingRemoval = true
+                        }
+                    }
                 }
             }
 
@@ -160,51 +182,29 @@ private struct LearnMoreLink: View {
     }
 }
 
-/// The "…" actions control pinned top-right of the About panel. A click reveals a small popover with
-/// "Check for Updates" and the rare/destructive "Remove RememBar…", keeping both out of the body.
-private struct AboutActionsMenu: View {
-    var onCheckForUpdates: (() -> Void)?
-    var onRemove: (() -> Void)?
+/// The "…" control pinned top-right of the About panel. Toggles the inline actions section below the
+/// header — deliberately NOT a nested popover, which churns focus inside a menu-bar window.
+private struct EllipsisToggle: View {
+    @Binding var isExpanded: Bool
     @State private var hovered = false
-    @State private var showActions = false
 
     var body: some View {
         Button {
-            showActions.toggle()
+            isExpanded.toggle()
         } label: {
             Image(systemName: "ellipsis")
                 .font(.system(size: 14, weight: .semibold))
-                .foregroundStyle((hovered || showActions) ? Tokens.text : Tokens.muted)
+                .foregroundStyle((hovered || isExpanded) ? Tokens.text : Tokens.muted)
                 .frame(width: Tokens.control, height: Tokens.control)
                 .background(
                     RoundedRectangle(cornerRadius: Tokens.radius, style: .continuous)
-                        .fill((hovered || showActions) ? Tokens.rowActive : .clear)
+                        .fill((hovered || isExpanded) ? Tokens.rowActive : .clear)
                 )
                 .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
         .onHover { hovered = $0 }
         .accessibilityLabel("More actions")
-        .popover(isPresented: $showActions, arrowEdge: .bottom) {
-            VStack(alignment: .leading, spacing: 1) {
-                if let onCheckForUpdates {
-                    AboutMenuRow(title: "Check for Updates", systemImage: "arrow.triangle.2.circlepath") {
-                        showActions = false
-                        onCheckForUpdates()
-                    }
-                }
-                if let onRemove {
-                    AboutMenuRow(title: "Remove RememBar…", systemImage: "trash", destructive: true) {
-                        showActions = false
-                        onRemove()
-                    }
-                }
-            }
-            .padding(Tokens.micro)
-            .frame(width: 210)
-            .background(Tokens.panel)
-            .background(SolidPopoverChrome(color: Tokens.panel))
-        }
     }
 }
 
