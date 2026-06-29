@@ -18,11 +18,11 @@ line_length:
 
 file_length:
   warning: 500
-  error: 750
+  error: 1500 # source is all <500; test suites are allowed to be larger
 
 type_body_length:
   warning: 400
-  error: 600
+  error: 1400 # source types are all <400; test suite bodies are allowed to be larger
 
 identifier_name:
   min_length: 2 # allow id, x, etc.
@@ -30,5 +30,3 @@ identifier_name:
 excluded:
   - .build
   - Vendor
-  # 3k-line legacy test file — exceeds the length rules; splitting it is tracked separately.
-  - Tests/BrowserMemoryBarTests/BrowserMemoryBarTests.swift

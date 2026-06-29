@@ -265,3 +265,19 @@ final class RecordingMemoryResultOpener: MemoryResultOpening {
         opened.append(result)
     }
 }
+
+func openFileDescriptorCount() throws -> Int {
+    try FileManager.default.contentsOfDirectory(atPath: "/dev/fd")
+        .filter { Int($0) != nil }
+        .count
+}
+
+func createEmptyFile(at url: URL) throws {
+    try FileManager.default.createDirectory(at: url.deletingLastPathComponent(), withIntermediateDirectories: true)
+    FileManager.default.createFile(atPath: url.path, contents: Data())
+}
+
+func createTextFile(at url: URL, contents: String) throws {
+    try FileManager.default.createDirectory(at: url.deletingLastPathComponent(), withIntermediateDirectories: true)
+    try contents.write(to: url, atomically: true, encoding: .utf8)
+}
