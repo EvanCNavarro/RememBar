@@ -307,13 +307,14 @@ private struct QueryContext: View {
                 .font(Tokens.label)
                 .foregroundStyle(Tokens.quiet)
 
-            Text(value)
+            // The query in quotes, tabbed in under the "Searched" label.
+            Text("\u{201C}\(value)\u{201D}")
                 .font(Tokens.caption)
                 .foregroundStyle(Tokens.muted)
                 .lineLimit(1)
                 .truncationMode(.tail)
+                .padding(.leading, Tokens.space)
         }
-        .padding(.horizontal, Tokens.space)
         .accessibilityElement(children: .combine)
     }
 }
@@ -345,6 +346,7 @@ private struct ResultsList: View {
                 .font(Tokens.label)
                 .foregroundStyle(Tokens.quiet)
 
+            // Result rows tabbed in to align under the "Results" label (matches the query indent).
             VStack(spacing: Tokens.space) {
                 ForEach(store.results) { result in
                     let isSelected = store.selectedID == result.id
@@ -357,9 +359,11 @@ private struct ResultsList: View {
                     )
                 }
             }
+            .padding(.leading, Tokens.space)
 
             if store.totalPages > 1 {
                 PaginationControls(store: store)
+                    .padding(.leading, Tokens.space)
             }
         }
     }
