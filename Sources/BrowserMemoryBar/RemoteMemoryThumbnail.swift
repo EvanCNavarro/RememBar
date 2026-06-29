@@ -133,12 +133,15 @@ struct RemoteMemoryThumbnail<Content: View, Placeholder: View>: View {
     }
 
     var body: some View {
-        AsyncImage(url: context.url) { phase in
+        // The transaction animates the empty -> success swap, so the image softly fades in over the
+        // shimmer skeleton instead of popping.
+        AsyncImage(url: context.url, transaction: Transaction(animation: .easeOut(duration: 0.3))) { phase in
             switch phase {
             case .empty:
-                placeholder
+                SkeletonBlock()
             case .success(let image):
                 content(image)
+                    .transition(.opacity)
                     .onAppear {
                         recorder.recordFinished(context)
                     }

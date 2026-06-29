@@ -322,14 +322,8 @@ private struct LoadingRows: View {
     var body: some View {
         VStack(spacing: Tokens.space) {
             ForEach(0..<3, id: \.self) { _ in
-                RoundedRectangle(cornerRadius: Tokens.radius, style: .continuous)
-                    .fill(Tokens.row)
-                    .overlay {
-                        RoundedRectangle(cornerRadius: Tokens.radius, style: .continuous)
-                            .stroke(Tokens.line, lineWidth: 1)
-                    }
+                SkeletonBlock(cornerRadius: Tokens.radius)
                     .frame(height: 58)
-                    .redacted(reason: .placeholder)
             }
         }
         .accessibilityLabel("Loading results")
@@ -350,10 +344,11 @@ private struct ResultsList: View {
             }
 
             VStack(spacing: Tokens.space) {
-                ForEach(store.results) { result in
+                ForEach(Array(store.results.enumerated()), id: \.element.id) { index, result in
                     let isSelected = store.selectedID == result.id
                     ResultLine(
                         result: result,
+                        index: index,
                         isSelected: isSelected,
                         isDimmed: store.selectedID != nil && !isSelected,
                         select: { store.select(result) },
@@ -498,10 +493,12 @@ private struct PaginationControls: View {
 
 private struct ResultLine: View {
     let result: MemoryResult
+    var index: Int = 0
     let isSelected: Bool
     let isDimmed: Bool
     let select: () -> Void
     let open: () -> Void
+    @State private var shown = isOffscreenRender
 
     var body: some View {
         ZStack(alignment: .trailing) {
@@ -555,9 +552,17 @@ private struct ResultLine: View {
             }
         }
         .frame(height: 58)
-        .opacity(isDimmed ? 0.46 : 1)
+        .opacity(shown ? (isDimmed ? 0.46 : 1) : 0)
+        .offset(y: shown ? 0 : 6)
         .animation(.easeInOut(duration: 0.14), value: isDimmed)
         .animation(.easeInOut(duration: 0.14), value: isSelected)
+        .onAppear {
+            guard !shown else { return }
+            // Soft, snappy stagger: each row springs up + fades in, offset by its position.
+            withAnimation(.spring(response: 0.34, dampingFraction: 0.82).delay(Double(index) * 0.045)) {
+                shown = true
+            }
+        }
     }
 }
 

@@ -11,6 +11,7 @@ struct QuickLookFileThumbnail<Placeholder: View>: View {
     let fileURL: URL
     @ViewBuilder let placeholder: Placeholder
     @State private var image: NSImage?
+    @State private var didLoad = isOffscreenRender
 
     var body: some View {
         Group {
@@ -18,12 +19,19 @@ struct QuickLookFileThumbnail<Placeholder: View>: View {
                 Image(nsImage: image)
                     .resizable()
                     .scaledToFill()
+                    .transition(.opacity)
+            } else if didLoad {
+                placeholder // generation finished with no thumbnail → fallback tile
             } else {
-                placeholder
+                SkeletonBlock() // still generating
             }
         }
+        .animation(.easeOut(duration: 0.25), value: image != nil)
         .task(id: fileURL) {
+            guard !isOffscreenRender else { return }
+            didLoad = false
             await loadThumbnail()
+            didLoad = true
         }
     }
 
