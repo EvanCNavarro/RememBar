@@ -17,10 +17,16 @@ env:
 
 jobs:
   release:
-    runs-on: macos-14
+    runs-on: macos-15
     timeout-minutes: 30
     steps:
       - uses: actions/checkout@v4
+
+      - name: Use latest Xcode (Swift 6 toolchain)
+        run: |
+          LATEST="$(ls -d /Applications/Xcode_16*.app 2>/dev/null | sort -V | tail -1)"
+          [ -n "$LATEST" ] && sudo xcode-select -s "$LATEST"
+          swift --version
 
       - name: Vendor Sparkle framework + fetch CLI tools
         run: |
