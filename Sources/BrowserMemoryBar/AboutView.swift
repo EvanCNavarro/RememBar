@@ -38,7 +38,8 @@ struct AboutPopover: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: Tokens.space) {
-            // Header: icon (left, larger) + name / version / Check-for-Updates stacked to its right.
+            // Header: icon (left, larger) + name / version / "made with" stacked to its right, with
+            // the "…" actions control pinned top-right.
             HStack(alignment: .top, spacing: Tokens.space + Tokens.micro) {
                 AppIconView()
                     .frame(width: 68, height: 68)
@@ -50,6 +51,8 @@ struct AboutPopover: View {
                     Text(versionLine)
                         .font(Tokens.caption)
                         .foregroundStyle(Tokens.muted)
+                    MadeWithSignoff()
+                        .padding(.top, 1)
                 }
 
                 Spacer(minLength: 0)
@@ -75,9 +78,6 @@ struct AboutPopover: View {
                 displayText: "ecn.dev/apps/RememBar",
                 url: URL(string: "https://ecn.dev/apps/RememBar")!
             )
-
-            // Quietest footer sign-off.
-            MadeWithFooter()
         }
         .padding(Tokens.space + Tokens.micro)
         .frame(width: 320, alignment: .leading)
@@ -241,8 +241,8 @@ private struct AboutMenuRow: View {
     }
 }
 
-/// The quiet sign-off in the About footer. The heart is an icon, never an emoji.
-private struct MadeWithFooter: View {
+/// The quiet "made with" sign-off under the version. The heart is an icon, never an emoji.
+private struct MadeWithSignoff: View {
     var body: some View {
         HStack(spacing: Tokens.micro) {
             Text("Made with")
