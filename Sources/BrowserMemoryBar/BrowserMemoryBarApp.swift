@@ -27,10 +27,31 @@ struct RememBarApp: App {
     /// from re-creating the diagnostics log we just removed.
     private func performUninstall() {
         RememBarAppDelegate.isUninstalling = true
+        // Flush + end the session BEFORE the log is trashed, so no late write re-creates it.
+        RememBarDiagnostics.shared.endSession(reason: "uninstall")
         let uninstaller = RememBarUninstaller()
         uninstaller.removeData()
-        try? uninstaller.removeBundle()
+        do {
+            try uninstaller.removeBundle()
+        } catch {
+            // Data is cleared, but the bundle couldn't be trashed (read-only / different volume).
+            // Honor the alert's promise — don't quit silently leaving a leftover that looks like a
+            // failed uninstall; reveal it and tell the user to finish by hand.
+            warnBundleNeedsManualRemoval()
+        }
         NSApp.terminate(nil)
+    }
+
+    private func warnBundleNeedsManualRemoval() {
+        let alert = NSAlert()
+        alert.alertStyle = .warning
+        alert.messageText = "Drag RememBar to the Trash to finish"
+        alert.informativeText = "RememBar's data was removed, but the app itself couldn't be moved to "
+            + "the Trash automatically (it may be on a read-only or different volume). It's now shown "
+            + "in Finder — drag it to the Trash to finish removing it."
+        alert.addButton(withTitle: "Reveal in Finder")
+        alert.runModal()
+        NSWorkspace.shared.activateFileViewerSelecting([Bundle.main.bundleURL])
     }
 
     var body: some Scene {

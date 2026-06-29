@@ -97,4 +97,20 @@ struct RememBarUninstallerTests {
 
         try? fm.removeItem(at: root)
     }
+
+    @Test("removeBundle propagates a trash failure so the caller can warn the user")
+    func bundleRemovalPropagatesError() throws {
+        let fm = FileManager.default
+        let root = sandbox()
+        let bundle = root.appendingPathComponent("RememBar.app", isDirectory: true)
+        try fm.createDirectory(at: bundle, withIntermediateDirectories: true)
+        struct TrashFailed: Error {}
+        let sut = RememBarUninstaller(
+            paths: RememBarPaths(library: root.appendingPathComponent("Library", isDirectory: true), bundleURL: bundle),
+            fileManager: fm,
+            trash: { _ in throw TrashFailed() }
+        )
+        #expect(throws: TrashFailed.self) { try sut.removeBundle() }
+        try? fm.removeItem(at: root)
+    }
 }
