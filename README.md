@@ -33,6 +33,16 @@ More sources will come over time — hence the *"and more."*
 
 There is **no AI and no account.** It's a fast local index search, not a chatbot.
 
+**Term families (aliases).** Create `~/Library/Application Support/RememBar/aliases.json` with groups
+of interchangeable words — then searching any member also finds things named after the others (e.g.
+search `evan` and surface `ECN_*` files):
+
+```json
+[["evan", "ecn", "navarro"], ["mom", "mother"]]
+```
+
+Edits apply on the next launch. Aliases work across files, history, and 1Password.
+
 ## Install
 
 1. Download `RememBar.zip` from the [latest release](https://github.com/EvanCNavarro/RememBar/releases/latest)
@@ -98,15 +108,22 @@ Requires the Swift toolchain (Xcode 16+ / Swift 6) on macOS 14+.
 
 ## Roadmap
 
-- [ ] Sparkle auto-updates (no App Store needed)
+- [x] Sparkle auto-updates (no App Store needed)
+- [x] Term families / aliases
+- [x] One-click uninstall
 - [ ] Signed + notarized releases
 - [ ] More sources beyond files / history / 1Password
 - [ ] Refinement / follow-up queries
 
 ## Uninstall
 
-Quit RememBar (menu bar → quit), drag **RememBar.app** to the Trash, and remove it from
-**System Settings → Privacy & Security → Full Disk Access**.
+Open the **?** panel and click **"Remove RememBar…"** — it moves the app and its data (preferences,
+caches, the diagnostics log) to the Trash, then quits. Afterward, remove RememBar from
+**System Settings → Privacy & Security → Full Disk Access** (macOS doesn't let an app revoke its own
+permission).
+
+Prefer to do it by hand? Quit RememBar, drag **RememBar.app** to the Trash, and delete
+`~/Library/Application Support/RememBar`.
 
 ## License
 
