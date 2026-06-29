@@ -81,8 +81,7 @@ release's notes carry everything you need to check the file before you run it:
 - **Signed updates** — the Sparkle auto-update feed is EdDSA-signed, so an update with a missing or
   bad signature is refused.
 
-The source is scanned by **CodeQL** on every change, and **Dependabot** keeps the CI actions
-patched.
+**Dependabot** keeps the CI action versions current.
 
 ## Build from source
 

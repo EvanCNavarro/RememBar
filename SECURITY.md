@@ -29,7 +29,6 @@ I'll acknowledge within a few days and aim to ship a fix promptly.
 - Releases carry **build provenance** (`gh attestation verify`), a **VirusTotal** scan link, and a
   published **SHA-256**.
 - Auto-updates are **EdDSA-signed**; Sparkle refuses any update without a valid signature.
-- Code is scanned by **CodeQL** on every change.
 
 ## Supported versions
 
