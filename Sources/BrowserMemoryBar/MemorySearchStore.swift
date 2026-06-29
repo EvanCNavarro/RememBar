@@ -9,11 +9,35 @@ final class MemorySearchStore: ObservableObject {
         case results
     }
 
+    /// How the result list is ordered. `.relevance` keeps the providers' ranking; `.recent` sorts
+    /// by each result's `sortDate` (file mtime / page visit), dateless results last.
+    enum SortMode: CaseIterable {
+        case relevance
+        case recent
+
+        var label: String {
+            switch self {
+            case .relevance: return "Most relevant"
+            case .recent: return "Most recent"
+            }
+        }
+
+        var systemImage: String {
+            switch self {
+            case .relevance: return "sparkles"
+            case .recent: return "clock"
+            }
+        }
+
+        var next: SortMode { self == .relevance ? .recent : .relevance }
+    }
+
     @Published var phase: Phase = .idle
     @Published var inputText = ""
     @Published private(set) var baseQuery = ""
     @Published private(set) var refinements: [String] = []
     @Published private(set) var results: [MemoryResult] = []
+    @Published private(set) var sortMode: SortMode = .relevance
     @Published private(set) var sourceStatuses: [MemorySearchSourceStatus] = []
     @Published var selectedID: MemoryResult.ID?
 
@@ -273,13 +297,38 @@ final class MemorySearchStore: ObservableObject {
         )
     }
 
+    /// Results in the current sort order. `.relevance` preserves provider ranking; `.recent` sorts
+    /// by `sortDate` descending — dateless results last, stable on ties.
+    private var orderedResults: [MemoryResult] {
+        switch sortMode {
+        case .relevance:
+            return allResults
+        case .recent:
+            return allResults.enumerated()
+                .sorted { lhs, rhs in
+                    let l = lhs.element.sortDate ?? .distantPast
+                    let r = rhs.element.sortDate ?? .distantPast
+                    return l == r ? lhs.offset < rhs.offset : l > r
+                }
+                .map(\.element)
+        }
+    }
+
+    func setSortMode(_ mode: SortMode) {
+        guard mode != sortMode else { return }
+        sortMode = mode
+        currentPage = 0
+        applyCurrentPage()
+    }
+
     private func applyCurrentPage() {
+        let ordered = orderedResults
         let start = currentPage * pageSize
-        guard start < allResults.count else {
+        guard start < ordered.count else {
             results = []
             return
         }
-        results = Array(allResults.dropFirst(start).prefix(pageSize))
+        results = Array(ordered.dropFirst(start).prefix(pageSize))
         selectedID = nil
     }
 }
@@ -320,6 +369,9 @@ struct MemoryResult: Identifiable, Equatable, Sendable {
     let thumbnail: MemoryResultThumbnail?
     let target: MemoryResultTarget
     let rank: Int
+    /// When this result was last touched (page visit / file mtime). nil for dateless results
+    /// (settings, app actions). Drives the "Most recent" sort.
+    let sortDate: Date?
 
     init(
         id: String,
@@ -329,7 +381,8 @@ struct MemoryResult: Identifiable, Equatable, Sendable {
         url: URL,
         thumbnailURL: URL?,
         browser: BrowserRef,
-        rank: Int = 0
+        rank: Int = 0,
+        visitedAt: Date? = nil
     ) {
         self.id = id
         self.title = title
@@ -338,6 +391,7 @@ struct MemoryResult: Identifiable, Equatable, Sendable {
         self.thumbnail = thumbnailURL.map(MemoryResultThumbnail.remoteImage)
         self.target = .web(url: url, browser: browser)
         self.rank = rank
+        self.sortDate = visitedAt
     }
 
     init(fileURL: URL, displayPath: String, modifiedAt: Date, rank: Int) {
@@ -351,6 +405,7 @@ struct MemoryResult: Identifiable, Equatable, Sendable {
         self.thumbnail = SensitivePathPolicy.isSensitive(fileURL) ? nil : .filePreview(fileURL)
         self.target = .file(fileURL)
         self.rank = rank
+        self.sortDate = modifiedAt
     }
 
     init(id: String, title: String, detail: String, systemSettingsURL: URL, rank: Int = 0) {
@@ -361,6 +416,7 @@ struct MemoryResult: Identifiable, Equatable, Sendable {
         self.thumbnail = nil
         self.target = .systemSettings(systemSettingsURL)
         self.rank = rank
+        self.sortDate = nil
     }
 
     init(id: String, title: String, detail: String, externalApp: ExternalAppTarget, rank: Int = 0) {
@@ -371,6 +427,7 @@ struct MemoryResult: Identifiable, Equatable, Sendable {
         self.thumbnail = nil
         self.target = .externalApp(externalApp)
         self.rank = rank
+        self.sortDate = nil
     }
 
     var url: URL {

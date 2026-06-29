@@ -711,7 +711,8 @@ extension MemoryResult {
             url: historyItem.url,
             thumbnailURL: historyItem.url.thumbnailURL,
             browser: historyItem.browser,
-            rank: rank
+            rank: rank,
+            visitedAt: historyItem.visitedAt
         )
     }
 }

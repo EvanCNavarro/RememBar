@@ -307,13 +307,12 @@ private struct QueryContext: View {
                 .font(Tokens.label)
                 .foregroundStyle(Tokens.quiet)
 
-            // The query in quotes, tabbed in under the "Searched" label.
+            // The query in quotes, aligned with its label (no extra indent).
             Text("\u{201C}\(value)\u{201D}")
                 .font(Tokens.caption)
                 .foregroundStyle(Tokens.muted)
                 .lineLimit(1)
                 .truncationMode(.tail)
-                .padding(.leading, Tokens.space)
         }
         .accessibilityElement(children: .combine)
     }
@@ -342,11 +341,14 @@ private struct ResultsList: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: Tokens.space) {
-            Text("Results")
-                .font(Tokens.label)
-                .foregroundStyle(Tokens.quiet)
+            HStack(spacing: Tokens.space) {
+                Text("Results")
+                    .font(Tokens.label)
+                    .foregroundStyle(Tokens.quiet)
+                Spacer(minLength: Tokens.space)
+                SortToggle(mode: store.sortMode) { store.setSortMode(store.sortMode.next) }
+            }
 
-            // Result rows tabbed in to align under the "Results" label (matches the query indent).
             VStack(spacing: Tokens.space) {
                 ForEach(store.results) { result in
                     let isSelected = store.selectedID == result.id
@@ -359,11 +361,9 @@ private struct ResultsList: View {
                     )
                 }
             }
-            .padding(.leading, Tokens.space)
 
             if store.totalPages > 1 {
                 PaginationControls(store: store)
-                    .padding(.leading, Tokens.space)
             }
         }
     }
@@ -435,6 +435,36 @@ private struct SourceExceptionRow: View {
         )
         .accessibilityElement(children: .combine)
         .accessibilityLabel("\(status.sourceName), \(status.stateLabel), \(status.accessibilityDetail)")
+    }
+}
+
+/// A compact text+icon toggle (right of "Results") that cycles the sort order. Brightens + shows a
+/// subtle background on hover, matching the panel's other controls.
+private struct SortToggle: View {
+    let mode: MemorySearchStore.SortMode
+    let action: () -> Void
+    @State private var hovered = false
+
+    var body: some View {
+        Button(action: action) {
+            HStack(spacing: Tokens.micro) {
+                Image(systemName: mode.systemImage)
+                    .font(.system(size: 9, weight: .semibold))
+                Text(mode.label)
+                    .font(Tokens.label)
+            }
+            .foregroundStyle(hovered ? Tokens.text : Tokens.muted)
+            .padding(.horizontal, Tokens.micro + 2)
+            .padding(.vertical, 3)
+            .background(
+                RoundedRectangle(cornerRadius: Tokens.micro, style: .continuous)
+                    .fill(hovered ? Tokens.row : Color.clear)
+            )
+            .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+        .onHover { hovered = $0 }
+        .accessibilityLabel("Sort by \(mode.label). Activate to change.")
     }
 }
 
