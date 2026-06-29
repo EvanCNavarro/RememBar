@@ -1,0 +1,89 @@
+name: Release
+
+# Tag a version (e.g. `git tag v0.1.0 && git push origin v0.1.0`) to cut a release:
+# builds the app in CI (so the download has verifiable provenance), scans it with VirusTotal,
+# generates an EdDSA-signed Sparkle appcast, and publishes everything to a GitHub Release.
+on:
+  push:
+    tags: ["v*"]
+
+permissions:
+  contents: write # create the release
+  id-token: write # build provenance
+  attestations: write # build provenance
+
+env:
+  SPARKLE_VERSION: "2.9.3"
+
+jobs:
+  release:
+    runs-on: macos-14
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Vendor Sparkle framework + fetch CLI tools
+        run: |
+          ./scripts/fetch-sparkle.sh
+          curl -fsSL "https://github.com/sparkle-project/Sparkle/releases/download/${SPARKLE_VERSION}/Sparkle-${SPARKLE_VERSION}.tar.xz" -o /tmp/sparkle.tar.xz
+          mkdir -p /tmp/sparkle-tools && tar xf /tmp/sparkle.tar.xz -C /tmp/sparkle-tools
+
+      - name: Build app (release)
+        run: CONFIGURATION=release REMEMBAR_DIST_DIR="$PWD/dist" ./scripts/build-remembar-app.sh
+
+      - name: Package + checksum
+        id: pkg
+        run: |
+          VERSION="${GITHUB_REF_NAME#v}"
+          cd dist
+          ditto -c -k --keepParent "RememBar.app" "RememBar.zip"
+          SHA="$(shasum -a 256 RememBar.zip | awk '{print $1}')"
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+          echo "sha256=$SHA"     >> "$GITHUB_OUTPUT"
+
+      - name: Generate EdDSA-signed appcast
+        env:
+          SPARKLE_ED_PRIVATE_KEY: ${{ secrets.SPARKLE_ED_PRIVATE_KEY }}
+        run: |
+          printf '%s' "$SPARKLE_ED_PRIVATE_KEY" > /tmp/ed_private.key
+          /tmp/sparkle-tools/bin/generate_appcast \
+            --ed-key-file /tmp/ed_private.key \
+            --download-url-prefix "https://github.com/${GITHUB_REPOSITORY}/releases/download/${GITHUB_REF_NAME}/" \
+            dist/
+          rm -f /tmp/ed_private.key
+          test -f dist/appcast.xml
+
+      - name: VirusTotal scan
+        id: vt
+        env:
+          VT_API_KEY: ${{ secrets.VIRUSTOTAL_API_KEY }}
+        run: |
+          ID="$(curl -s --request POST --url https://www.virustotal.com/api/v3/files \
+            --header "x-apikey: $VT_API_KEY" \
+            --form file=@dist/RememBar.zip \
+            | python3 -c 'import sys,json; print(json.load(sys.stdin)["data"]["id"])')"
+          echo "url=https://www.virustotal.com/gui/file-analysis/${ID}" >> "$GITHUB_OUTPUT"
+
+      - name: Attest build provenance
+        uses: actions/attest-build-provenance@v1
+        with:
+          subject-path: dist/RememBar.zip
+
+      - name: Publish GitHub Release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          cat > /tmp/notes.md <<EOF
+          ## RememBar ${{ steps.pkg.outputs.version }}
+
+          ### Verify this download
+          - **SHA-256:** \`${{ steps.pkg.outputs.sha256 }}\`
+          - **VirusTotal:** ${{ steps.vt.outputs.url }}
+          - **Provenance:** \`gh attestation verify RememBar.zip --repo ${GITHUB_REPOSITORY}\`
+
+          Built in GitHub Actions from \`${GITHUB_SHA}\`. Auto-updates are EdDSA-signed.
+          EOF
+          gh release create "${GITHUB_REF_NAME}" \
+            dist/RememBar.zip dist/appcast.xml \
+            --title "RememBar ${{ steps.pkg.outputs.version }}" \
+            --notes-file /tmp/notes.md

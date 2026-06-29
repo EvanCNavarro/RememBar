@@ -69,10 +69,20 @@ That's it.
 
 ## Verify this download
 
-> _Coming with the first tagged release._ Each release will publish the build's **SHA-256**, a
-> **VirusTotal** scan link, and **build provenance** you can check with
-> `gh attestation verify RememBar.zip --repo EvanCNavarro/remembar` — so you can confirm the file you
-> downloaded is exactly what this repository built, before you run it.
+Every release is **built by this repository's GitHub Actions** — not a personal machine — and each
+release's notes carry everything you need to check the file before you run it:
+
+- **Build provenance** — confirm the download came from this repo's CI, untampered:
+  ```bash
+  gh attestation verify RememBar.zip --repo EvanCNavarro/remembar
+  ```
+- **VirusTotal** — a scan link (dozens of engines) is posted in the release notes.
+- **SHA-256** — published in the release notes; compare with `shasum -a 256 RememBar.zip`.
+- **Signed updates** — the Sparkle auto-update feed is EdDSA-signed, so an update with a missing or
+  bad signature is refused.
+
+The source is scanned by **CodeQL** on every change, and **Dependabot** keeps the CI actions
+patched.
 
 ## Build from source
 

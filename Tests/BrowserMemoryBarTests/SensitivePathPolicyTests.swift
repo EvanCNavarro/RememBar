@@ -9,8 +9,8 @@ struct SensitivePathPolicyTests {
     @Test("classifies secret-bearing file names as sensitive")
     func classifiesSecretNames() {
         let sensitive = [
-            "/Users/x/Downloads/github-recovery-codes.txt",
-            "/Users/x/Downloads/github-recovery-codes-inv.txt",
+            "/Users/x/Downloads/recovery-codes.txt",
+            "/Users/x/Downloads/recovery-codes-inv.txt",
             "/Users/x/MyPassword.txt",        // case-insensitive keyword
             "/Users/x/seed phrase.rtf",       // space variant
             "/Users/x/2fa-backup.txt",
@@ -56,8 +56,8 @@ struct SensitivePathPolicyTests {
     @Test("redacts a sensitive leaf while preserving its directory context")
     func redactsLeafKeepsDirectory() {
         let out = SensitivePathPolicy.redactingSensitivePaths(
-            in: "/Users/x/Downloads/github-recovery-codes.txt")
-        #expect(out.contains("github-recovery-codes.txt") == false)
+            in: "/Users/x/Downloads/recovery-codes.txt")
+        #expect(out.contains("recovery-codes.txt") == false)
         #expect(out.hasPrefix("/Users/x/Downloads/"))   // directory preserved for debugging
     }
 

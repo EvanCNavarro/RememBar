@@ -1,0 +1,11 @@
+version: 2
+updates:
+  # Keep the GitHub Actions used in our workflows current (security patches, etc.).
+  # Sparkle is a vendored binaryTarget (pinned in fetch-sparkle.sh), not a registry dependency,
+  # so the actions ecosystem is the one Dependabot can meaningfully manage here.
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+    commit-message:
+      prefix: "ci"

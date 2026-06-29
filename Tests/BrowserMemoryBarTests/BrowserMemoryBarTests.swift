@@ -933,8 +933,8 @@ struct RememBarTests {
         _ = diagnostics.startSession()
 
         let secretFile = MemoryResult(
-            fileURL: URL(fileURLWithPath: "/Users/x/Downloads/github-recovery-codes.txt"),
-            displayPath: "Downloads/github-recovery-codes.txt",
+            fileURL: URL(fileURLWithPath: "/Users/x/Downloads/recovery-codes.txt"),
+            displayPath: "Downloads/recovery-codes.txt",
             modifiedAt: Date(timeIntervalSince1970: 1_800_000_000),
             rank: 100
         )
@@ -961,7 +961,7 @@ struct RememBarTests {
         #expect(!events.isEmpty)
         for event in events {
             for (key, value) in event.fields {
-                #expect(value.contains("github-recovery-codes.txt") == false,
+                #expect(value.contains("recovery-codes.txt") == false,
                         "raw secret path leaked in \(event.name).\(key)")
             }
         }
