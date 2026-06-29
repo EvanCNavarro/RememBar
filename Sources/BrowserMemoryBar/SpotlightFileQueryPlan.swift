@@ -8,7 +8,7 @@ struct SpotlightFileQueryPlan: Equatable, Sendable {
     let query: String
     let hasExplicitFileIntent: Bool
 
-    init(query: String, refinements: [String]) {
+    init(query: String, refinements: [String], aliases: AliasGroups = .empty) {
         let tokens = MemorySearchTokenizer.tokenize(([query] + refinements).joined(separator: " "))
         hasExplicitFileIntent = tokens.contains(where: Self.isFileIntentTerm)
         let extensionHints = Self.extensionHints(for: tokens)
@@ -17,7 +17,10 @@ struct SpotlightFileQueryPlan: Equatable, Sendable {
             .union(Self.explicitFileExtensions)
         searchTerms = tokens.filter { !ignored.contains($0) }.uniquePreservingOrder()
         descriptorTerms = searchTerms.filter(Self.isDescriptorTerm)
-        entityTerms = searchTerms.filter { !Self.isDescriptorTerm($0) }
+        // Expand entity terms through the alias families: both the mdfind query (buildQuery) and the
+        // ranker (which scores entityTerms) inherit the members from this one place. Descriptors and
+        // numbers are never aliased.
+        entityTerms = aliases.expand(searchTerms.filter { !Self.isDescriptorTerm($0) })
         allowedExtensions = extensionHints
         self.query = Self.buildQuery(
             entityTerms: entityTerms,

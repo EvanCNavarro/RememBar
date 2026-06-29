@@ -6,8 +6,10 @@ struct CompositeMemorySearchProvider: MemorySearching, Sendable {
 
     init(providers: [any MemorySearching]? = nil, diagnostics: RememBarDiagnostics = .shared) {
         self.diagnostics = diagnostics
+        // Load the user's alias families once per launch (absent/malformed → no expansion).
+        let aliases = AliasGroups.load(from: RememBarPaths.current.aliasesURL)
         self.providers = providers ?? [
-            SpotlightFileSearchProvider(diagnostics: diagnostics),
+            SpotlightFileSearchProvider(diagnostics: diagnostics, aliases: aliases),
             LocalHistorySearchProvider(diagnostics: diagnostics),
             OnePasswordSearchProvider(diagnostics: diagnostics)
         ]

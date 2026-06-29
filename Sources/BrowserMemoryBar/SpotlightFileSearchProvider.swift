@@ -6,23 +6,26 @@ struct SpotlightFileSearchProvider: MemorySearching, Sendable {
     private let accessChecker: any FileSearchAccessChecking
     private let now: @Sendable () -> Date
     private let diagnostics: RememBarDiagnostics
+    private let aliases: AliasGroups
 
     init(
         home: URL = FileManager.default.homeDirectoryForCurrentUser,
         spotlight: (any SpotlightSearching)? = nil,
         accessChecker: any FileSearchAccessChecking = ProtectedLocationFileSearchAccessChecker(),
         now: @escaping @Sendable () -> Date = Date.init,
-        diagnostics: RememBarDiagnostics = .shared
+        diagnostics: RememBarDiagnostics = .shared,
+        aliases: AliasGroups = .empty
     ) {
         self.home = home
         self.spotlight = spotlight ?? MdfindSpotlightSearch(diagnostics: diagnostics)
         self.accessChecker = accessChecker
         self.now = now
         self.diagnostics = diagnostics
+        self.aliases = aliases
     }
 
     func searchResponse(query: String, refinements: [String], limit: Int) async -> MemorySearchResponse {
-        let plan = SpotlightFileQueryPlan(query: query, refinements: refinements)
+        let plan = SpotlightFileQueryPlan(query: query, refinements: refinements, aliases: aliases)
         guard !plan.query.isEmpty else {
             diagnostics.record(
                 RememBarDiagnosticEvent.spotlightProviderEmptyPlan,
