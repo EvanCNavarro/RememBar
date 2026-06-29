@@ -42,7 +42,6 @@ struct MdfindSpotlightSearch: SpotlightSearching, Sendable {
     }
 
     private func run(query: String, root: URL, state: RunningProcessState) throws -> [URL] {
-        diagnostics.record(RememBarDiagnosticEvent.mdfindProcessLaunch, fields: processFields(query: query, root: root))
         let result: ProcessRunResult
         do {
             result = try ProcessRunner.run(
@@ -51,6 +50,9 @@ struct MdfindSpotlightSearch: SpotlightSearching, Sendable {
                 timeout: timeout,
                 state: state,
                 separateStderr: false, // mdfind merges stderr into stdout
+                onWillLaunch: {
+                    diagnostics.record(RememBarDiagnosticEvent.mdfindProcessLaunch, fields: processFields(query: query, root: root))
+                },
                 onLaunched: { pid in
                     diagnostics.record(
                         RememBarDiagnosticEvent.mdfindProcessLaunched,

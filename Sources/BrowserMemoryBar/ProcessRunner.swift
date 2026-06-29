@@ -26,6 +26,7 @@ enum ProcessRunner {
         timeout: DispatchTimeInterval,
         state: RunningProcessState,
         separateStderr: Bool,
+        onWillLaunch: () -> Void = {},
         onLaunched: (Int32) -> Void = { _ in },
         onCancelRequestedAfterLaunch: (Int32) -> Void = { _ in }
     ) throws -> ProcessRunResult {
@@ -48,6 +49,7 @@ enum ProcessRunner {
         process.terminationHandler = { _ in finished.signal() }
 
         if state.isCancelled { throw ProcessRunError.cancelledBeforeLaunch }
+        onWillLaunch()
         do {
             try process.run()
         } catch {
