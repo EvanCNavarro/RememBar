@@ -1,22 +1,36 @@
 import Foundation
 
 enum HistoryRanker {
-    static func search(rows: [HistoryItem], query: String, refinements: [String] = [], limit: Int) -> [HistoryItem] {
-        searchRanked(rows: rows, query: query, refinements: refinements, limit: limit)
+    static func search(
+        rows: [HistoryItem],
+        query: String,
+        refinements: [String] = [],
+        limit: Int,
+        aliases: AliasGroups = .empty
+    ) -> [HistoryItem] {
+        searchRanked(rows: rows, query: query, refinements: refinements, limit: limit, aliases: aliases)
             .map(\.item)
     }
 
-    static func searchRanked(rows: [HistoryItem], query: String, refinements: [String] = [], limit: Int) -> [RankedHistoryItem] {
+    static func searchRanked(
+        rows: [HistoryItem],
+        query: String,
+        refinements: [String] = [],
+        limit: Int,
+        aliases: AliasGroups = .empty
+    ) -> [RankedHistoryItem] {
         let terms = tokenize(query)
         let refinementTerms = tokenize(refinements.joined(separator: " "))
         let wantsYouTube = (terms + refinementTerms).contains { $0 == "youtube" || $0 == "youtu" }
         let contentTerms = terms.filter { $0 != "youtube" && $0 != "youtu" }
         let contentRefinementTerms = refinementTerms.filter { $0 != "youtube" && $0 != "youtu" }
+        // A group is one logical term: match per slot so aliases never inflate the AND-threshold.
+        let contentSlots = aliases.slots(contentTerms)
         return rows
             .compactMap { row -> (HistoryItem, Int)? in
                 let score = score(
                     row: row,
-                    terms: contentTerms,
+                    slots: contentSlots,
                     refinementTerms: contentRefinementTerms,
                     query: query,
                     wantsYouTube: wantsYouTube
@@ -39,7 +53,7 @@ enum HistoryRanker {
 
     private static func score(
         row: HistoryItem,
-        terms: [String],
+        slots: [[String]],
         refinementTerms: [String],
         query: String,
         wantsYouTube: Bool
@@ -47,7 +61,7 @@ enum HistoryRanker {
         if wantsYouTube, !isYouTube(row.url) {
             return 0
         }
-        guard !terms.isEmpty else {
+        guard !slots.isEmpty else {
             return wantsYouTube ? 30 + youtubeVideoScore(row.url) : 1
         }
         let urlText = row.url.absoluteString.lowercased()
@@ -58,18 +72,20 @@ enum HistoryRanker {
         var score = 0
         var matched = 0
 
-        for term in terms where rowTerms.contains(term) {
+        // One match per slot (a group counts once), so the AND-threshold stays on the typed-term count.
+        for slot in slots {
+            guard let hit = slot.first(where: { rowTerms.contains($0) }) else { continue }
             matched += 1
-            if titleTerms.contains(term) {
+            if titleTerms.contains(hit) {
                 score += 70
-            } else if urlTerms.contains(term) {
+            } else if urlTerms.contains(hit) {
                 score += 55
             } else {
                 score += 35
             }
         }
 
-        guard matched >= requiredContentMatches(for: terms.count) else { return 0 }
+        guard matched >= requiredContentMatches(for: slots.count) else { return 0 }
         if wantsYouTube {
             score += 30
             score += youtubeVideoScore(row.url)

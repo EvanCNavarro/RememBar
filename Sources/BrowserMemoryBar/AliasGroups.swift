@@ -33,12 +33,26 @@ struct AliasGroups: Equatable, Sendable {
     /// Each input term, followed by every term in any group it belongs to. Order-preserving and
     /// deduped, so the resulting query is deterministic. Input terms are assumed already lowercased
     /// (the tokenizer lowercases); lowercasing here too keeps it safe if called directly.
+    /// Each input term as a "slot": the term plus every member of any group it belongs to, deduped
+    /// within the slot and bounded. A group is ONE logical term — callers with AND-style thresholds
+    /// (e.g. "match ≥N of the typed terms") MUST match per slot, not per flattened variant, or an
+    /// alias group inflates the term count and breaks the threshold.
+    func slots(_ terms: [String]) -> [[String]] {
+        terms.map { term in
+            var seen = Set<String>()
+            let variants = [term.lowercased()] + members(of: term)
+            return Array(variants.filter { seen.insert($0).inserted }.prefix(Self.maxMembersPerGroup))
+        }
+    }
+
+    /// Flat union of `slots(_:)` — every term + alias member, order-preserving, deduped, bounded.
+    /// Right for OR-style matching and for building the mdfind fetch query.
     func expand(_ terms: [String]) -> [String] {
         guard !groups.isEmpty else { return terms }
         var result: [String] = []
         var seen = Set<String>()
-        for term in terms {
-            for candidate in [term.lowercased()] + members(of: term) where seen.insert(candidate).inserted {
+        for slot in slots(terms) {
+            for candidate in slot where seen.insert(candidate).inserted {
                 result.append(candidate)
                 if result.count >= Self.maxExpandedTerms { return result }
             }

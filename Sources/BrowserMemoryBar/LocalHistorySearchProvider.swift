@@ -5,15 +5,18 @@ struct LocalHistorySearchProvider: MemorySearching, Sendable {
     private let home: URL
     private let window: HistorySearchWindow
     private let diagnostics: RememBarDiagnostics
+    private let aliases: AliasGroups
 
     init(
         home: URL = FileManager.default.homeDirectoryForCurrentUser,
         window: HistorySearchWindow = .default,
-        diagnostics: RememBarDiagnostics = .shared
+        diagnostics: RememBarDiagnostics = .shared,
+        aliases: AliasGroups = .empty
     ) {
         self.home = home
         self.window = window
         self.diagnostics = diagnostics
+        self.aliases = aliases
     }
 
     init(home: URL, since: Date?, diagnostics: RememBarDiagnostics = .shared) {
@@ -32,7 +35,7 @@ struct LocalHistorySearchProvider: MemorySearching, Sendable {
             ]
         )
         let report = readReport()
-        let results = HistoryRanker.searchRanked(rows: report.rows, query: query, refinements: refinements, limit: limit)
+        let results = HistoryRanker.searchRanked(rows: report.rows, query: query, refinements: refinements, limit: limit, aliases: aliases)
             .map { MemoryResult(historyItem: $0.item, rank: $0.score) }
         let sourceStatuses = report.sourceStatuses
         diagnostics.record(

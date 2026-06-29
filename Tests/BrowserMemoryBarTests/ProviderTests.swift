@@ -200,6 +200,29 @@ struct ProviderTests {
         }
     }
 
+    @Test("history ranker expands aliases per slot without inflating the AND-threshold")
+    func historyAliasSlots() {
+        func row(_ title: String, _ url: String) -> HistoryItem {
+            HistoryItem(browser: .zen, profile: "Default", visitedAt: Date(timeIntervalSince1970: 1_800_000_000),
+                        title: title, url: URL(string: url)!, sourcePath: "/tmp/zen")
+        }
+        let aliases = AliasGroups(groups: [["evan", "ecn"]])
+        let ecnPage = row("ECN blog", "https://ecn.dev/blog")
+        let resumePage = row("resume tips", "https://example.com/resume")
+        let ecnResume = row("ECN resume", "https://ecn.dev/resume")
+
+        // single term: "evan" finds the ECN page via the alias — and nothing without it
+        #expect(HistoryRanker.search(rows: [ecnPage], query: "evan", limit: 10, aliases: aliases).map(\.title) == ["ECN blog"])
+        #expect(HistoryRanker.search(rows: [ecnPage], query: "evan", limit: 10).isEmpty)
+
+        // two slots "evan resume": a page matching ONLY the evan-group (no resume) is rejected —
+        // the alias must not inflate the count and produce a false positive.
+        #expect(
+            HistoryRanker.search(rows: [ecnPage, resumePage, ecnResume], query: "evan resume", limit: 10, aliases: aliases)
+                .map(\.title) == ["ECN resume"]
+        )
+    }
+
     @Test("history source discovery classifies chromium firefox and safari")
     func historySourceDiscoveryClassifiesFamilies() throws {
         let root = try temporaryDirectory()

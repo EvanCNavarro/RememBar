@@ -10,7 +10,7 @@ struct CompositeMemorySearchProvider: MemorySearching, Sendable {
         let aliases = AliasGroups.load(from: RememBarPaths.current.aliasesURL)
         self.providers = providers ?? [
             SpotlightFileSearchProvider(diagnostics: diagnostics, aliases: aliases),
-            LocalHistorySearchProvider(diagnostics: diagnostics),
+            LocalHistorySearchProvider(diagnostics: diagnostics, aliases: aliases),
             OnePasswordSearchProvider(diagnostics: diagnostics, aliases: aliases)
         ]
     }
