@@ -1,7 +1,4 @@
 import SwiftUI
-#if canImport(AppKit)
-import AppKit
-#endif
 
 struct QueryContext: View {
     let label: String
