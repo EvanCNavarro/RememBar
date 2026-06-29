@@ -7,7 +7,7 @@ local data (files, browser history, 1Password metadata), security reports are ta
 
 Please report privately — **do not open a public issue** for security problems:
 
-- Open a [private security advisory](https://github.com/EvanCNavarro/remembar/security/advisories/new), or
+- Open a [private security advisory](https://github.com/EvanCNavarro/RememBar/security/advisories/new), or
 - Email **evancnavarro@gmail.com**.
 
 I'll acknowledge within a few days and aim to ship a fix promptly.

@@ -14,7 +14,7 @@ SHORT_VERSION="${REMEMBAR_VERSION:-0.1.0}"
 BUILD_VERSION="${REMEMBAR_BUILD:-$(printf '%s' "$SHORT_VERSION" | tr -d '.')}"
 # Sparkle appcast URL (Info.plist SUFeedURL). 404s until the first release publishes appcast.xml;
 # easily overridden if the repo slug changes.
-SU_FEED_URL="${REMEMBAR_FEED_URL:-https://github.com/EvanCNavarro/remembar/releases/latest/download/appcast.xml}"
+SU_FEED_URL="${REMEMBAR_FEED_URL:-https://github.com/EvanCNavarro/RememBar/releases/latest/download/appcast.xml}"
 # Sparkle EdDSA PUBLIC key — safe to commit. The matching private key lives in the login Keychain
 # (svce https://sparkle-project.org) and signs each update via `sign_update`. Updates with a bad/
 # missing signature are refused by Sparkle.

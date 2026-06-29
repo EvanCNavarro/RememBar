@@ -35,7 +35,7 @@ There is **no AI and no account.** It's a fast local index search, not a chatbot
 
 ## Install
 
-1. Download `RememBar.zip` from the [latest release](https://github.com/EvanCNavarro/remembar/releases/latest)
+1. Download `RememBar.zip` from the [latest release](https://github.com/EvanCNavarro/RememBar/releases/latest)
    and unzip it. Drag **RememBar.app** to `/Applications`.
 2. **First launch (macOS Sequoia / 15):** double-clicking shows *"Apple could not verify…"* — this is
    expected for an app that isn't notarized yet. To open it:
@@ -74,7 +74,7 @@ release's notes carry everything you need to check the file before you run it:
 
 - **Build provenance** — confirm the download came from this repo's CI, untampered:
   ```bash
-  gh attestation verify RememBar.zip --repo EvanCNavarro/remembar
+  gh attestation verify RememBar.zip --repo EvanCNavarro/RememBar
   ```
 - **VirusTotal** — a scan link (dozens of engines) is posted in the release notes.
 - **SHA-256** — published in the release notes; compare with `shasum -a 256 RememBar.zip`.
@@ -86,8 +86,8 @@ release's notes carry everything you need to check the file before you run it:
 ## Build from source
 
 ```bash
-git clone https://github.com/EvanCNavarro/remembar.git
-cd remembar
+git clone https://github.com/EvanCNavarro/RememBar.git
+cd RememBar
 ./scripts/fetch-sparkle.sh        # one-time: vendors the Sparkle auto-update framework
 swift build                       # debug build
 swift test                        # run the test suite
