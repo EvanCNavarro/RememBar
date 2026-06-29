@@ -170,69 +170,27 @@ struct OnePasswordCLIItemLister: OnePasswordItemListing {
         timeout: DispatchTimeInterval,
         state: RunningProcessState
     ) throws -> [OnePasswordItemSummary] {
-        try Task.checkCancellation()
-
-        let process = Process()
-        process.executableURL = executableURL
-        process.arguments = ["item", "list", "--format", "json"]
-
-        let outputPipe = Pipe()
-        let errorPipe = Pipe()
-        process.standardOutput = outputPipe
-        process.standardError = errorPipe
-
-        let finished = DispatchSemaphore(value: 0)
-        let outputFinished = DispatchSemaphore(value: 0)
-        let errorFinished = DispatchSemaphore(value: 0)
-        let outputData = LockedData()
-        let errorData = LockedData()
-        process.terminationHandler = { _ in finished.signal() }
-
-        if state.isCancelled {
-            throw CancellationError()
-        }
-
+        let result: ProcessRunResult
         do {
-            try process.run()
-        } catch {
+            result = try ProcessRunner.run(
+                executableURL: executableURL,
+                arguments: ["item", "list", "--format", "json"],
+                timeout: timeout,
+                state: state,
+                separateStderr: true // `op` keeps stderr separate for the sign-in/lock detection below
+            )
+        } catch ProcessRunError.cancelledBeforeLaunch {
+            throw CancellationError()
+        } catch ProcessRunError.cancelledAfterLaunch {
+            throw CancellationError()
+        } catch ProcessRunError.launchFailed {
             throw OnePasswordItemListError.unavailable
-        }
-        state.attachLaunched(process)
-
-        DispatchQueue.global(qos: .utility).async {
-            outputData.set(outputPipe.fileHandleForReading.readDataToEndOfFile())
-            outputFinished.signal()
-        }
-        DispatchQueue.global(qos: .utility).async {
-            errorData.set(errorPipe.fileHandleForReading.readDataToEndOfFile())
-            errorFinished.signal()
-        }
-
-        if state.isCancelled, process.isRunning {
-            process.terminate()
-        }
-
-        guard finished.wait(timeout: .now() + timeout) == .success else {
-            process.terminate()
-            _ = finished.wait(timeout: .now() + .seconds(1))
-            outputPipe.fileHandleForReading.closeFile()
-            errorPipe.fileHandleForReading.closeFile()
-            _ = outputFinished.wait(timeout: .now() + .seconds(1))
-            _ = errorFinished.wait(timeout: .now() + .seconds(1))
+        } catch ProcessRunError.timedOut {
             throw OnePasswordItemListError.failed
         }
 
-        _ = outputFinished.wait(timeout: .now() + .seconds(1))
-        _ = errorFinished.wait(timeout: .now() + .seconds(1))
-
-        if state.isCancelled {
-            throw CancellationError()
-        }
-
-        let output = outputData.get()
-        let errorOutput = errorData.get()
-        guard process.terminationStatus == 0 else {
-            let stderr = String(data: errorOutput, encoding: .utf8)?.lowercased() ?? ""
+        guard result.terminationStatus == 0 else {
+            let stderr = String(data: result.stderr, encoding: .utf8)?.lowercased() ?? ""
             if stderr.contains("sign in") || stderr.contains("not currently signed in") || stderr.contains("unlock") {
                 throw OnePasswordItemListError.locked
             }
@@ -240,7 +198,7 @@ struct OnePasswordCLIItemLister: OnePasswordItemListing {
         }
 
         do {
-            return try decodeItems(from: output)
+            return try decodeItems(from: result.stdout)
         } catch {
             throw OnePasswordItemListError.failed
         }

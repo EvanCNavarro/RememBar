@@ -42,85 +42,61 @@ struct MdfindSpotlightSearch: SpotlightSearching, Sendable {
     }
 
     private func run(query: String, root: URL, state: RunningProcessState) throws -> [URL] {
-        try Task.checkCancellation()
-
-        let process = Process()
-        process.executableURL = executableURL
-        process.arguments = ["-onlyin", root.path, query]
-
-        let pipe = Pipe()
-        process.standardOutput = pipe
-        process.standardError = pipe
-
-        let processFinished = DispatchSemaphore(value: 0)
-        let outputFinished = DispatchSemaphore(value: 0)
-        let output = LockedData()
-
-        process.terminationHandler = { _ in
-            processFinished.signal()
-        }
-
-        if state.isCancelled {
+        diagnostics.record(RememBarDiagnosticEvent.mdfindProcessLaunch, fields: processFields(query: query, root: root))
+        let result: ProcessRunResult
+        do {
+            result = try ProcessRunner.run(
+                executableURL: executableURL,
+                arguments: ["-onlyin", root.path, query],
+                timeout: timeout,
+                state: state,
+                separateStderr: false, // mdfind merges stderr into stdout
+                onLaunched: { pid in
+                    diagnostics.record(
+                        RememBarDiagnosticEvent.mdfindProcessLaunched,
+                        fields: processFields(query: query, root: root, processID: pid)
+                    )
+                },
+                onCancelRequestedAfterLaunch: { pid in
+                    diagnostics.record(
+                        RememBarDiagnosticEvent.mdfindProcessCancelRequestedAfterLaunch,
+                        level: .warning,
+                        fields: processFields(query: query, root: root, processID: pid)
+                    )
+                }
+            )
+        } catch ProcessRunError.cancelledBeforeLaunch {
             diagnostics.record(
                 RememBarDiagnosticEvent.mdfindProcessCancelledBeforeLaunch,
                 level: .warning,
                 fields: processFields(query: query, root: root)
             )
             throw CancellationError()
-        }
-        diagnostics.record(RememBarDiagnosticEvent.mdfindProcessLaunch, fields: processFields(query: query, root: root))
-        do {
-            try process.run()
-        } catch {
+        } catch let ProcessRunError.launchFailed(error) {
             var fields = processFields(query: query, root: root)
             fields["error"] = String(describing: error)
             diagnostics.record(RememBarDiagnosticEvent.mdfindProcessLaunchFailed, level: .error, fields: fields)
             throw error
-        }
-        state.attachLaunched(process)
-        diagnostics.record(
-            RememBarDiagnosticEvent.mdfindProcessLaunched,
-            fields: processFields(query: query, root: root, processID: process.processIdentifier)
-        )
-        DispatchQueue.global(qos: .utility).async {
-            let data = pipe.fileHandleForReading.readDataToEndOfFile()
-            output.set(data)
-            outputFinished.signal()
-        }
-        if state.isCancelled, process.isRunning {
-            diagnostics.record(
-                RememBarDiagnosticEvent.mdfindProcessCancelRequestedAfterLaunch,
-                level: .warning,
-                fields: processFields(query: query, root: root, processID: process.processIdentifier)
-            )
-            process.terminate()
-        }
-        guard processFinished.wait(timeout: .now() + timeout) == .success else {
+        } catch let ProcessRunError.timedOut(pid) {
             diagnostics.record(
                 RememBarDiagnosticEvent.mdfindProcessTimeout,
                 level: .error,
-                fields: processFields(query: query, root: root, processID: process.processIdentifier)
+                fields: processFields(query: query, root: root, processID: pid)
             )
-            process.terminate()
-            _ = processFinished.wait(timeout: .now() + .seconds(1))
-            pipe.fileHandleForReading.closeFile()
-            _ = outputFinished.wait(timeout: .now() + .seconds(1))
             throw SpotlightSearchError.timedOut
-        }
-        _ = outputFinished.wait(timeout: .now() + .seconds(1))
-
-        let text = String(data: output.get(), encoding: .utf8) ?? ""
-        if state.isCancelled {
+        } catch let ProcessRunError.cancelledAfterLaunch(pid) {
             diagnostics.record(
                 RememBarDiagnosticEvent.mdfindProcessCancelled,
                 level: .warning,
-                fields: processFields(query: query, root: root, processID: process.processIdentifier)
+                fields: processFields(query: query, root: root, processID: pid)
             )
             throw CancellationError()
         }
-        if process.terminationStatus != 0 {
-            var fields = processFields(query: query, root: root, processID: process.processIdentifier)
-            fields["terminationStatus"] = "\(process.terminationStatus)"
+
+        let text = String(data: result.stdout, encoding: .utf8) ?? ""
+        if result.terminationStatus != 0 {
+            var fields = processFields(query: query, root: root, processID: result.processID)
+            fields["terminationStatus"] = "\(result.terminationStatus)"
             fields["stderr"] = text.trimmingCharacters(in: .whitespacesAndNewlines)
             diagnostics.record(RememBarDiagnosticEvent.mdfindProcessFailed, level: .error, fields: fields)
             throw SpotlightSearchError.mdfindFailed(text.trimmingCharacters(in: .whitespacesAndNewlines))
@@ -129,8 +105,8 @@ struct MdfindSpotlightSearch: SpotlightSearching, Sendable {
         let urls = text
             .split(separator: "\n")
             .map { URL(fileURLWithPath: String($0)) }
-        var fields = processFields(query: query, root: root, processID: process.processIdentifier)
-        fields["terminationStatus"] = "\(process.terminationStatus)"
+        var fields = processFields(query: query, root: root, processID: result.processID)
+        fields["terminationStatus"] = "\(result.terminationStatus)"
         fields["resultCount"] = "\(urls.count)"
         diagnostics.record(RememBarDiagnosticEvent.mdfindProcessFinished, fields: fields)
         return urls
