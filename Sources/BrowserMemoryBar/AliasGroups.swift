@@ -13,13 +13,19 @@ struct AliasGroups: Equatable, Sendable {
 
     static let empty = AliasGroups(groups: [])
 
+    // Bounds so a pathological config (one giant group, every term aliased) can't explode the mdfind
+    // predicate string or the per-term ranker loop.
+    private static let maxMembersPerGroup = 64
+    private static let maxExpandedTerms = 256
+
     init(groups: [[String]]) {
         self.groups = groups
             .map { group -> [String] in
                 var seen = Set<String>()
                 // ≥2 chars mirrors the tokenizer (a 1-char member like "e" would mdfind-match
-                // "*e*" — i.e. everything); dedupe within the group.
-                return group.map { $0.lowercased() }.filter { $0.count > 1 && seen.insert($0).inserted }
+                // "*e*" — i.e. everything); dedupe within the group; cap fan-out.
+                let cleaned = group.map { $0.lowercased() }.filter { $0.count > 1 && seen.insert($0).inserted }
+                return Array(cleaned.prefix(Self.maxMembersPerGroup))
             }
             .filter { $0.count > 1 } // a group of fewer than two terms expands to nothing
     }
@@ -34,6 +40,7 @@ struct AliasGroups: Equatable, Sendable {
         for term in terms {
             for candidate in [term.lowercased()] + members(of: term) where seen.insert(candidate).inserted {
                 result.append(candidate)
+                if result.count >= Self.maxExpandedTerms { return result }
             }
         }
         return result

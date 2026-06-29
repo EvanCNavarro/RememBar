@@ -46,7 +46,8 @@ struct RememBarPaths {
         supportDirectory.appendingPathComponent("Diagnostics", isDirectory: true)
     }
 
-    /// The user-curated alias-group config (0.2.0+), beside the data root.
+    /// The user-curated alias-group config (0.2.0+), beside the data root. Loaded once per launch —
+    /// edits apply on the next restart.
     var aliasesURL: URL {
         supportDirectory.appendingPathComponent("aliases.json", isDirectory: false)
     }

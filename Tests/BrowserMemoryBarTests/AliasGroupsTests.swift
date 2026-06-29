@@ -39,6 +39,18 @@ struct AliasGroupsTests {
         #expect(AliasGroups(groups: [["evan"]]).expand(["evan"]) == ["evan"])
     }
 
+    @Test("oversized groups are bounded so a pathological config can't explode the query")
+    func fanOutBounded() {
+        let huge = (0..<500).map { "term\($0)" }
+        #expect(AliasGroups(groups: [huge]).expand(["term0"]).count <= 64) // capped to maxMembersPerGroup
+    }
+
+    @Test("an alias member that is itself a descriptor still expands from its alias")
+    func descriptorMemberEdge() {
+        // typing "au" pulls in "gold"; expansion is term-level, the plan decides descriptor-ness
+        #expect(AliasGroups(groups: [["au", "gold"]]).expand(["au"]) == ["au", "gold"])
+    }
+
     @Test("empty groups are a pure pass-through")
     func emptyIsIdentity() {
         #expect(AliasGroups.empty.expand(["evan", "ecn"]) == ["evan", "ecn"])
