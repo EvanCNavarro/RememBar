@@ -7,6 +7,11 @@ CONFIGURATION="${CONFIGURATION:-debug}"
 APP_NAME="RememBar"
 EXECUTABLE_NAME="RememBar"
 BUNDLE_ID="dev.ecn.apps.remembar"
+# Marketing + build version. The release workflow passes REMEMBAR_VERSION=<tag>; locally they default
+# to 0.1.0. CFBundleVersion (what Sparkle compares) is derived from the version (dots removed) so it
+# rises monotonically across releases — 0.1.0 -> 010, 0.1.1 -> 011 — without a second source of truth.
+SHORT_VERSION="${REMEMBAR_VERSION:-0.1.0}"
+BUILD_VERSION="${REMEMBAR_BUILD:-$(printf '%s' "$SHORT_VERSION" | tr -d '.')}"
 # Sparkle appcast URL (Info.plist SUFeedURL). 404s until the first release publishes appcast.xml;
 # easily overridden if the repo slug changes.
 SU_FEED_URL="${REMEMBAR_FEED_URL:-https://github.com/EvanCNavarro/remembar/releases/latest/download/appcast.xml}"
@@ -78,9 +83,9 @@ cat > "$CONTENTS_DIR/Info.plist" <<PLIST
   <key>CFBundlePackageType</key>
   <string>APPL</string>
   <key>CFBundleShortVersionString</key>
-  <string>0.1.0</string>
+  <string>$SHORT_VERSION</string>
   <key>CFBundleVersion</key>
-  <string>1</string>
+  <string>$BUILD_VERSION</string>
   <key>LSMinimumSystemVersion</key>
   <string>14.0</string>
   <key>LSUIElement</key>
