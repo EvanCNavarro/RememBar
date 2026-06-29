@@ -8,12 +8,14 @@ struct MemoryPanel: View {
     /// Sparkle is injected as an optional closure so this view (and the render harness) never
     /// import or instantiate the updater. The app passes `SparkleUpdater.shared.checkForUpdates`.
     var onCheckForUpdates: (() -> Void)?
+    /// Injected for the same reason — the app passes the real "move RememBar to the Trash" action.
+    var onUninstall: (() -> Void)?
 
     var body: some View {
         VStack(alignment: .leading, spacing: Tokens.space) {
             HStack(spacing: Tokens.space) {
                 CommandField(store: store)
-                AboutControl(onCheckForUpdates: onCheckForUpdates)
+                AboutControl(onCheckForUpdates: onCheckForUpdates, onUninstall: onUninstall)
             }
 
             if !store.baseQuery.isEmpty {

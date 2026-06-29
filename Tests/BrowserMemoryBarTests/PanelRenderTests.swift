@@ -50,7 +50,7 @@ struct PanelRenderTests {
 
         try render(MemoryPanel(store: store).frame(width: 420).background(Tokens.panel),
                    to: "panel_render.png")
-        try render(AboutPopover(onCheckForUpdates: {}).fixedSize(),
+        try render(AboutPopover(onCheckForUpdates: {}, onUninstall: {}).fixedSize(),
                    to: "panel_about.png")
     }
 

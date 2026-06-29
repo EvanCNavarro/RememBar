@@ -7,6 +7,7 @@ import AppKit
 /// to learn more.
 struct AboutControl: View {
     var onCheckForUpdates: (() -> Void)?
+    var onUninstall: (() -> Void)?
     @State private var showAbout = false
 
     var body: some View {
@@ -16,7 +17,7 @@ struct AboutControl: View {
         }
         .accessibilityLabel("About RememBar")
         .popover(isPresented: $showAbout, arrowEdge: .bottom) {
-            AboutPopover(onCheckForUpdates: onCheckForUpdates)
+            AboutPopover(onCheckForUpdates: onCheckForUpdates, onUninstall: onUninstall)
         }
     }
 }
@@ -24,6 +25,10 @@ struct AboutControl: View {
 struct AboutPopover: View {
     /// Optional so the offscreen render harness stays Sparkle-free; the app injects the real check.
     var onCheckForUpdates: (() -> Void)?
+    /// Optional for the same reason — the app injects the real "move RememBar to the Trash" action.
+    var onUninstall: (() -> Void)?
+
+    @State private var confirmingRemoval = false
 
     private var versionLine: String {
         let short = Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "0.1.0"
@@ -68,16 +73,30 @@ struct AboutPopover: View {
                 url: URL(string: "https://ecn.dev/apps/RememBar")!
             )
 
-            // Quietest footer
-            Text("© 2026 Evan C. Navarro")
-                .font(Tokens.caption)
-                .foregroundStyle(Tokens.quiet)
+            // Quietest footer: copyright, and (in the app only) a discreet remover.
+            HStack(spacing: Tokens.micro) {
+                Text("© 2026 Evan C. Navarro")
+                    .font(Tokens.caption)
+                    .foregroundStyle(Tokens.quiet)
+                Spacer(minLength: Tokens.space)
+                if onUninstall != nil {
+                    RemoveRememBarButton { confirmingRemoval = true }
+                }
+            }
         }
         .padding(Tokens.space + Tokens.micro)
         .frame(width: 320, alignment: .leading)
         .background(Tokens.panel)
         // Match the system NSPopover's arrow to the panel color (see SolidPopoverChrome).
         .background(SolidPopoverChrome(color: Tokens.panel))
+        .alert("Remove RememBar?", isPresented: $confirmingRemoval) {
+            Button("Move to Trash", role: .destructive) { onUninstall?() }
+            Button("Cancel", role: .cancel) {}
+        } message: {
+            Text("RememBar and its data (preferences, caches, and the diagnostics log) will be moved "
+                + "to the Trash. Full Disk Access stays in System Settings › Privacy & Security until "
+                + "you remove it there.")
+        }
     }
 }
 
@@ -142,6 +161,24 @@ private struct LearnMoreLink: View {
         .buttonStyle(.plain)
         .onHover { hovered = $0 }
         .accessibilityLabel("Learn more at \(url.absoluteString)")
+    }
+}
+
+/// A discreet text button in the About footer that asks to move RememBar to the Trash. Quiet by
+/// default; tints destructive-red on hover so it reads as a rare, deliberate action.
+private struct RemoveRememBarButton: View {
+    let action: () -> Void
+    @State private var hovered = false
+
+    var body: some View {
+        Button(action: action) {
+            Text("Remove RememBar…")
+                .font(Tokens.caption)
+                .foregroundStyle(hovered ? Color.red : Tokens.quiet)
+        }
+        .buttonStyle(.plain)
+        .onHover { hovered = $0 }
+        .accessibilityLabel("Remove RememBar from this Mac")
     }
 }
 
