@@ -221,6 +221,10 @@ struct ProviderTests {
             HistoryRanker.search(rows: [ecnPage, resumePage, ecnResume], query: "evan resume", limit: 10, aliases: aliases)
                 .map(\.title) == ["ECN resume"]
         )
+
+        // Pinned: typing two members of the SAME family ("evan ecn") is OR-treated — a page with
+        // just "ecn" satisfies both slots. Degenerate input, but intentional.
+        #expect(HistoryRanker.search(rows: [ecnPage], query: "evan ecn", limit: 10, aliases: aliases).map(\.title) == ["ECN blog"])
     }
 
     @Test("history source discovery classifies chromium firefox and safari")

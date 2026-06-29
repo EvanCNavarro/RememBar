@@ -72,13 +72,15 @@ enum HistoryRanker {
         var score = 0
         var matched = 0
 
-        // One match per slot (a group counts once), so the AND-threshold stays on the typed-term count.
+        // One match per slot (a group counts once), so the AND-threshold stays on the typed-term
+        // count. Score by the slot's strongest field across any present variant (title > url > rest).
         for slot in slots {
-            guard let hit = slot.first(where: { rowTerms.contains($0) }) else { continue }
+            let present = slot.filter { rowTerms.contains($0) }
+            guard !present.isEmpty else { continue }
             matched += 1
-            if titleTerms.contains(hit) {
+            if present.contains(where: { titleTerms.contains($0) }) {
                 score += 70
-            } else if urlTerms.contains(hit) {
+            } else if present.contains(where: { urlTerms.contains($0) }) {
                 score += 55
             } else {
                 score += 35

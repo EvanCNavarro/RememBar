@@ -30,9 +30,6 @@ struct AliasGroups: Equatable, Sendable {
             .filter { $0.count > 1 } // a group of fewer than two terms expands to nothing
     }
 
-    /// Each input term, followed by every term in any group it belongs to. Order-preserving and
-    /// deduped, so the resulting query is deterministic. Input terms are assumed already lowercased
-    /// (the tokenizer lowercases); lowercasing here too keeps it safe if called directly.
     /// Each input term as a "slot": the term plus every member of any group it belongs to, deduped
     /// within the slot and bounded. A group is ONE logical term — callers with AND-style thresholds
     /// (e.g. "match ≥N of the typed terms") MUST match per slot, not per flattened variant, or an
