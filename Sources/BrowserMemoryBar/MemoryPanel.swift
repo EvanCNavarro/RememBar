@@ -7,7 +7,7 @@ struct MemoryPanel: View {
     @ObservedObject var store: MemorySearchStore
     /// Sparkle is injected as an optional closure so this view (and the render harness) never
     /// import or instantiate the updater. The app passes `SparkleUpdater.shared.checkForUpdates`.
-    var onCheckForUpdates: (() -> Void)? = nil
+    var onCheckForUpdates: (() -> Void)?
 
     var body: some View {
         VStack(alignment: .leading, spacing: Tokens.space) {

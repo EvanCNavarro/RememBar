@@ -1,0 +1,34 @@
+# SwiftLint — code-cleanliness gate for RememBar.
+disabled_rules:
+  - todo # this codebase intentionally carries no TODO/FIXME markers
+
+opt_in_rules:
+  - empty_count
+  - closure_spacing
+  - redundant_nil_coalescing
+  - operator_usage_whitespace
+  - sorted_imports
+  - first_where
+
+line_length:
+  warning: 120
+  error: 200
+  ignores_comments: true
+  ignores_urls: true
+
+file_length:
+  warning: 500
+  error: 750
+
+type_body_length:
+  warning: 400
+  error: 600
+
+identifier_name:
+  min_length: 2 # allow id, x, etc.
+
+excluded:
+  - .build
+  - Vendor
+  # 3k-line legacy test file — exceeds the length rules; splitting it is tracked separately.
+  - Tests/BrowserMemoryBarTests/BrowserMemoryBarTests.swift

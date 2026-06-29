@@ -1,6 +1,6 @@
+@testable import BrowserMemoryBar
 import Foundation
 import Testing
-@testable import BrowserMemoryBar
 
 @Suite("SensitivePathPolicy")
 struct SensitivePathPolicyTests {

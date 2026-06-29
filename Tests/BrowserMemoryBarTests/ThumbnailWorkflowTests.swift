@@ -1,6 +1,6 @@
+@testable import BrowserMemoryBar
 import Foundation
 import Testing
-@testable import BrowserMemoryBar
 
 @Suite("Thumbnail presentation")
 struct ThumbnailPresentationTests {

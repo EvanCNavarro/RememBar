@@ -1,6 +1,6 @@
+@testable import BrowserMemoryBar
 import Foundation
 import Testing
-@testable import BrowserMemoryBar
 
 @Suite struct SortModeTests {
     /// Three file results in rank order a, b, c with modification dates b > a > c.

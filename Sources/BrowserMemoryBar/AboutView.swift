@@ -6,7 +6,7 @@ import AppKit
 /// The "?" control — not settings: an About panel answering what this is, who made it, and where
 /// to learn more.
 struct AboutControl: View {
-    var onCheckForUpdates: (() -> Void)? = nil
+    var onCheckForUpdates: (() -> Void)?
     @State private var showAbout = false
 
     var body: some View {
@@ -23,7 +23,7 @@ struct AboutControl: View {
 
 struct AboutPopover: View {
     /// Optional so the offscreen render harness stays Sparkle-free; the app injects the real check.
-    var onCheckForUpdates: (() -> Void)? = nil
+    var onCheckForUpdates: (() -> Void)?
 
     private var versionLine: String {
         let short = Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "0.1.0"

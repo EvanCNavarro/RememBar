@@ -229,10 +229,7 @@ struct HistoryDiscoveryIssue: Equatable, Sendable {
     }
 
     private static func idComponent(_ value: String) -> String {
-        value
-            .components(separatedBy: CharacterSet.alphanumerics.inverted)
-            .filter { !$0.isEmpty }
-            .joined(separator: "-")
+        value.slugified()
     }
 }
 
@@ -262,10 +259,7 @@ struct HistorySource: Equatable, Sendable {
     }
 
     var idComponent: String {
-        "\(browser.displayName).\(profile)"
-            .components(separatedBy: CharacterSet.alphanumerics.inverted)
-            .filter { !$0.isEmpty }
-            .joined(separator: "-")
+        "\(browser.displayName).\(profile)".slugified()
     }
 
     static func discover(home: URL, fileManager: FileManager = .default) -> [HistorySource] {

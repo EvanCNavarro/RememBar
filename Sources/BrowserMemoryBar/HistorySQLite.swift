@@ -72,7 +72,6 @@ struct HistoryDatabaseReader {
     }
 }
 
-
 private enum SQLiteSnapshot {
     static func withSnapshot<T>(of source: URL, fileManager: FileManager, body: (URL) throws -> T) throws -> T {
         let temporaryDirectory = fileManager.temporaryDirectory
@@ -167,4 +166,3 @@ enum SQLiteError: Error, CustomStringConvertible {
         }
     }
 }
-

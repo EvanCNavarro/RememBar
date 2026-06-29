@@ -1,6 +1,6 @@
+@testable import BrowserMemoryBar
 import Foundation
 import Testing
-@testable import BrowserMemoryBar
 
 /// Regression coverage for the HIGH-severity secret-leak fix:
 ///   - Vector B: Quick Look must not render content previews of secret files.

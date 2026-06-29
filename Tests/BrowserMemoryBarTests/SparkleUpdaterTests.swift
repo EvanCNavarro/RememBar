@@ -1,5 +1,5 @@
-import Testing
 @testable import BrowserMemoryBar
+import Testing
 
 @Suite struct SparkleUpdaterTests {
     /// Constructing the shared updater must not crash or hang even with no running app and no feed

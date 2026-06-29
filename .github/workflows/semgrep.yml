@@ -1,0 +1,25 @@
+name: Semgrep
+
+# Lightweight SAST (replaces the unreliable Swift CodeQL). Runs the public security-audit + secrets
+# rulesets — no token needed. Informational for now; tighten to --error once the baseline is clean.
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  schedule:
+    - cron: "27 5 * * 1" # weekly, Monday 05:27 UTC
+
+permissions:
+  contents: read
+
+jobs:
+  semgrep:
+    name: scan
+    runs-on: ubuntu-latest
+    container:
+      image: semgrep/semgrep
+    if: github.actor != 'dependabot[bot]'
+    steps:
+      - uses: actions/checkout@v7
+      - run: semgrep scan --config p/security-audit --config p/secrets --metrics off

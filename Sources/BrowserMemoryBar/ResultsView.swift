@@ -124,10 +124,10 @@ private struct SourceExceptionRow: View {
         .padding(.horizontal, Tokens.space)
         .padding(.vertical, Tokens.micro + 2)
         .background(
-            RoundedRectangle(cornerRadius: 10, style: .continuous)
+            RoundedRectangle(cornerRadius: Tokens.radius, style: .continuous)
                 .fill(Tokens.warning.opacity(0.10))
                 .overlay(
-                    RoundedRectangle(cornerRadius: 10, style: .continuous)
+                    RoundedRectangle(cornerRadius: Tokens.radius, style: .continuous)
                         .stroke(Tokens.warning.opacity(0.4), lineWidth: 1)
                 )
         )

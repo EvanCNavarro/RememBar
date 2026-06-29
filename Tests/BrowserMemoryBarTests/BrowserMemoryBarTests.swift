@@ -1,8 +1,8 @@
-import Foundation
 import AppKit
+@testable import BrowserMemoryBar
+import Foundation
 import SQLite3
 import Testing
-@testable import BrowserMemoryBar
 
 @Suite("RememBar")
 struct RememBarTests {

@@ -319,6 +319,11 @@ final class RememBarDiagnostics: @unchecked Sendable {
               fileManager.fileExists(atPath: logURL.path) else {
             return
         }
+        // O(1) size probe first: a single search fires ~15-20 events, and re-reading the whole log
+        // (up to maxLogBytes) on each one just to find it's under the cap is wasteful. Only read +
+        // rewrite when actually over.
+        let fileSize = ((try? fileManager.attributesOfItem(atPath: logURL.path))?[.size] as? NSNumber)?.intValue ?? 0
+        guard fileSize > maxLogBytes else { return }
         let data = try Data(contentsOf: logURL)
         guard data.count > maxLogBytes else { return }
         guard let text = String(data: data, encoding: .utf8) else { return }
@@ -400,12 +405,16 @@ final class RememBarDiagnostics: @unchecked Sendable {
         try? fileManager.createDirectory(at: directory, withIntermediateDirectories: true)
     }
 
+    // Shared formatter — ISO8601DateFormatter is costly to allocate and is documented thread-safe;
+    // `timestamp(for:)` is on the per-event hot path. nonisolated(unsafe) vouches for that safety.
+    nonisolated(unsafe) private static let iso8601 = ISO8601DateFormatter()
+
     private func timestamp(for date: Date) -> String {
-        ISO8601DateFormatter().string(from: date)
+        Self.iso8601.string(from: date)
     }
 
     private static func date(from timestamp: String) -> Date? {
-        ISO8601DateFormatter().date(from: timestamp)
+        iso8601.date(from: timestamp)
     }
 
     static func defaultDirectory(

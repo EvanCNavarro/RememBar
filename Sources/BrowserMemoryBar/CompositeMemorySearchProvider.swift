@@ -45,7 +45,7 @@ struct CompositeMemorySearchProvider: MemorySearching, Sendable {
                             "durationMs": "\(Int(Date().timeIntervalSince(providerStartedAt) * 1000))"
                         ]
                     )
-                    return ProviderSearchOutput(index: index, providerName: providerName, response: response)
+                    return ProviderSearchOutput(index: index, response: response)
                 }
             }
 
@@ -77,7 +77,6 @@ struct CompositeMemorySearchProvider: MemorySearching, Sendable {
 
 private struct ProviderSearchOutput: Sendable {
     let index: Int
-    let providerName: String
     let response: MemorySearchResponse
 }
 

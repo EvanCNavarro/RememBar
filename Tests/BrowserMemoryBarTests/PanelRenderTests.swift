@@ -1,8 +1,8 @@
+import AppKit
+@testable import BrowserMemoryBar
 import Foundation
 import SwiftUI
-import AppKit
 import Testing
-@testable import BrowserMemoryBar
 
 private struct FixedResponseProvider: MemorySearching {
     let response: MemorySearchResponse

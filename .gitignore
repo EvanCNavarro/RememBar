@@ -5,3 +5,12 @@ dist/
 .DS_Store
 Vendor/
 .engine/
+
+# Secrets — never commit (defense in depth alongside GitHub secret scanning)
+.env
+.env.*
+*.pem
+*.key
+*.p12
+*.mobileprovision
+credentials.json

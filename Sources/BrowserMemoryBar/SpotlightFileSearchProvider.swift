@@ -153,9 +153,6 @@ struct SpotlightFileSearchProvider: MemorySearching, Sendable {
     }
 
     private static func sourceIDComponent(_ value: String) -> String {
-        value
-            .components(separatedBy: CharacterSet.alphanumerics.inverted)
-            .filter { !$0.isEmpty }
-            .joined(separator: "-")
+        value.slugified()
     }
 }
