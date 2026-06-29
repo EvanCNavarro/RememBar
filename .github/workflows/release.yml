@@ -71,7 +71,7 @@ jobs:
       - name: Attest build provenance
         # Free only on public repos; skip while the repo is still private (it'll run once public).
         if: ${{ github.event.repository.private == false }}
-        uses: actions/attest-build-provenance@v1
+        uses: actions/attest-build-provenance@v4
         with:
           subject-path: dist/RememBar.zip
 
