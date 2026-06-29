@@ -426,11 +426,9 @@ final class RememBarDiagnostics: @unchecked Sendable {
             return URL(fileURLWithPath: override, isDirectory: true)
         }
 
-        let support = fileManager.urls(for: .applicationSupportDirectory, in: .userDomainMask).first
-            ?? fileManager.homeDirectoryForCurrentUser.appendingPathComponent("Library/Application Support", isDirectory: true)
-        return support
-            .appendingPathComponent("RememBar", isDirectory: true)
-            .appendingPathComponent("Diagnostics", isDirectory: true)
+        let library = fileManager.urls(for: .applicationSupportDirectory, in: .userDomainMask).first?.deletingLastPathComponent()
+            ?? fileManager.homeDirectoryForCurrentUser.appendingPathComponent("Library", isDirectory: true)
+        return RememBarPaths(library: library, bundleURL: nil).diagnosticsDirectory
     }
 
     static func isRunningUnderTests(
