@@ -39,7 +39,7 @@ struct AboutPopover: View {
     var body: some View {
         VStack(alignment: .leading, spacing: Tokens.space) {
             // Header: icon (left, larger) + name / version / Check-for-Updates stacked to its right.
-            HStack(alignment: .center, spacing: Tokens.space + Tokens.micro) {
+            HStack(alignment: .top, spacing: Tokens.space + Tokens.micro) {
                 AppIconView()
                     .frame(width: 68, height: 68)
 
@@ -50,13 +50,16 @@ struct AboutPopover: View {
                     Text(versionLine)
                         .font(Tokens.caption)
                         .foregroundStyle(Tokens.muted)
-                    if let onCheckForUpdates {
-                        CheckForUpdatesBar(action: onCheckForUpdates)
-                            .padding(.top, Tokens.micro)
-                    }
                 }
 
                 Spacer(minLength: 0)
+
+                if onCheckForUpdates != nil || onUninstall != nil {
+                    AboutActionsMenu(
+                        onCheckForUpdates: onCheckForUpdates,
+                        onRemove: onUninstall == nil ? nil : { confirmingRemoval = true }
+                    )
+                }
             }
 
             Divider().overlay(Tokens.line)
@@ -73,16 +76,8 @@ struct AboutPopover: View {
                 url: URL(string: "https://ecn.dev/apps/RememBar")!
             )
 
-            // Quietest footer: copyright, and (in the app only) a discreet remover.
-            HStack(spacing: Tokens.micro) {
-                Text("© 2026 Evan C. Navarro")
-                    .font(Tokens.caption)
-                    .foregroundStyle(Tokens.quiet)
-                Spacer(minLength: Tokens.space)
-                if onUninstall != nil {
-                    RemoveRememBarButton { confirmingRemoval = true }
-                }
-            }
+            // Quietest footer sign-off.
+            MadeWithFooter()
         }
         .padding(Tokens.space + Tokens.micro)
         .frame(width: 320, alignment: .leading)
@@ -141,6 +136,7 @@ private struct LearnMoreLink: View {
                 Text(displayText)
                     .fontWeight(.semibold)
                     .foregroundStyle(Tokens.text)
+                    .underline(hovered, pattern: .solid) // only the URL text reacts, not the icons
                 Image(systemName: "arrow.up.forward")
                     .font(.system(size: 9, weight: .semibold))
                     .foregroundStyle(Tokens.text)
@@ -150,11 +146,11 @@ private struct LearnMoreLink: View {
             .frame(height: Tokens.controlButton + 4)
             .background(
                 RoundedRectangle(cornerRadius: Tokens.radius, style: .continuous)
-                    .fill(hovered ? Tokens.rowActive : Tokens.row)
+                    .fill(Tokens.row)
             )
             .overlay(
                 RoundedRectangle(cornerRadius: Tokens.radius, style: .continuous)
-                    .stroke(hovered ? Tokens.lineStrong : Tokens.line, lineWidth: 1)
+                    .stroke(Tokens.line, lineWidth: 1)
             )
             .contentShape(Rectangle())
         }
@@ -164,54 +160,99 @@ private struct LearnMoreLink: View {
     }
 }
 
-/// A discreet text button in the About footer that asks to move RememBar to the Trash. Quiet by
-/// default; tints destructive-red on hover so it reads as a rare, deliberate action.
-private struct RemoveRememBarButton: View {
-    let action: () -> Void
+/// The "…" actions control pinned top-right of the About panel. A click reveals a small popover with
+/// "Check for Updates" and the rare/destructive "Remove RememBar…", keeping both out of the body.
+private struct AboutActionsMenu: View {
+    var onCheckForUpdates: (() -> Void)?
+    var onRemove: (() -> Void)?
     @State private var hovered = false
+    @State private var showActions = false
 
     var body: some View {
-        Button(action: action) {
-            Text("Remove RememBar…")
-                .font(Tokens.caption)
-                .foregroundStyle(hovered ? Color.red : Tokens.quiet)
+        Button {
+            showActions.toggle()
+        } label: {
+            Image(systemName: "ellipsis")
+                .font(.system(size: 14, weight: .semibold))
+                .foregroundStyle((hovered || showActions) ? Tokens.text : Tokens.muted)
+                .frame(width: Tokens.control, height: Tokens.control)
+                .background(
+                    RoundedRectangle(cornerRadius: Tokens.radius, style: .continuous)
+                        .fill((hovered || showActions) ? Tokens.rowActive : .clear)
+                )
+                .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
         .onHover { hovered = $0 }
-        .accessibilityLabel("Remove RememBar from this Mac")
+        .accessibilityLabel("More actions")
+        .popover(isPresented: $showActions, arrowEdge: .bottom) {
+            VStack(alignment: .leading, spacing: 1) {
+                if let onCheckForUpdates {
+                    AboutMenuRow(title: "Check for Updates", systemImage: "arrow.triangle.2.circlepath") {
+                        showActions = false
+                        onCheckForUpdates()
+                    }
+                }
+                if let onRemove {
+                    AboutMenuRow(title: "Remove RememBar…", systemImage: "trash", destructive: true) {
+                        showActions = false
+                        onRemove()
+                    }
+                }
+            }
+            .padding(Tokens.micro)
+            .frame(width: 210)
+            .background(Tokens.panel)
+            .background(SolidPopoverChrome(color: Tokens.panel))
+        }
     }
 }
 
-/// A compact bordered "bar" button (sits under the version in the About header) that triggers a
-/// Sparkle update check. Brightens on hover, matching the other About controls.
-private struct CheckForUpdatesBar: View {
+/// One row inside the About "…" popover.
+private struct AboutMenuRow: View {
+    let title: String
+    let systemImage: String
+    var destructive = false
     let action: () -> Void
     @State private var hovered = false
 
     var body: some View {
         Button(action: action) {
             HStack(spacing: Tokens.micro + 1) {
-                Image(systemName: "arrow.triangle.2.circlepath")
-                    .font(.system(size: 10, weight: .semibold))
-                Text("Check for Updates")
-                    .font(Tokens.caption.weight(.medium))
+                Image(systemName: systemImage)
+                    .font(.system(size: 11, weight: .medium))
+                    .frame(width: 16)
+                Text(title)
+                Spacer(minLength: 0)
             }
-            .foregroundStyle(hovered ? Tokens.text : Tokens.muted)
-            .padding(.horizontal, Tokens.space)
+            .font(Tokens.caption)
+            .foregroundStyle(destructive ? Color.red : Tokens.text)
+            .padding(.horizontal, Tokens.micro + 2)
             .frame(height: Tokens.controlButton)
+            .frame(maxWidth: .infinity)
             .background(
-                RoundedRectangle(cornerRadius: Tokens.radius, style: .continuous)
-                    .fill(hovered ? Tokens.rowActive : Tokens.row)
-            )
-            .overlay(
-                RoundedRectangle(cornerRadius: Tokens.radius, style: .continuous)
-                    .stroke(hovered ? Tokens.lineStrong : Tokens.line, lineWidth: 1)
+                RoundedRectangle(cornerRadius: Tokens.radius - 1, style: .continuous)
+                    .fill(hovered ? Tokens.rowActive : .clear)
             )
             .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
         .onHover { hovered = $0 }
-        .accessibilityLabel("Check for Updates")
+    }
+}
+
+/// The quiet sign-off in the About footer. The heart is an icon, never an emoji.
+private struct MadeWithFooter: View {
+    var body: some View {
+        HStack(spacing: Tokens.micro) {
+            Text("Made with")
+            Image(systemName: "heart.fill")
+                .font(.system(size: 9))
+                .foregroundStyle(.pink)
+            Text("& Vibes")
+        }
+        .font(Tokens.caption)
+        .foregroundStyle(Tokens.quiet)
     }
 }
 
