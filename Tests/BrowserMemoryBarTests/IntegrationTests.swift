@@ -298,6 +298,23 @@ struct IntegrationTests {
         ])
     }
 
+    @Test("one password provider expands the query through alias groups")
+    func onePasswordProviderExpandsAliases() async {
+        let items: [OnePasswordItemSummary] = [
+            OnePasswordItemSummary(id: "ecn", title: "ECN Portal", vaultID: "v", vaultName: "Private", category: "LOGIN")
+        ]
+        // evan→ecn alias: searching "evan" finds the ECN item it otherwise wouldn't.
+        let aliased = OnePasswordSearchProvider(
+            itemLister: StubOnePasswordItemLister(result: .success(items)),
+            aliases: AliasGroups(groups: [["evan", "ecn"]])
+        )
+        #expect(await aliased.searchResponse(query: "evan", refinements: [], limit: 5).results.map(\.title) == ["ECN Portal"])
+
+        // Without the alias, "evan" matches nothing in "ECN Portal".
+        let plain = OnePasswordSearchProvider(itemLister: StubOnePasswordItemLister(result: .success(items)))
+        #expect(await plain.searchResponse(query: "evan", refinements: [], limit: 5).results.isEmpty)
+    }
+
     @Test("one password provider reports unavailable and locked states")
     func onePasswordProviderReportsUnavailableAndLockedStates() async {
         let unavailable = await OnePasswordSearchProvider(

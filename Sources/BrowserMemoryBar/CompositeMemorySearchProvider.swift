@@ -11,7 +11,7 @@ struct CompositeMemorySearchProvider: MemorySearching, Sendable {
         self.providers = providers ?? [
             SpotlightFileSearchProvider(diagnostics: diagnostics, aliases: aliases),
             LocalHistorySearchProvider(diagnostics: diagnostics),
-            OnePasswordSearchProvider(diagnostics: diagnostics)
+            OnePasswordSearchProvider(diagnostics: diagnostics, aliases: aliases)
         ]
     }
 

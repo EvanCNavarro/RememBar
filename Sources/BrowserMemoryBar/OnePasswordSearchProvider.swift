@@ -3,13 +3,16 @@ import Foundation
 struct OnePasswordSearchProvider: MemorySearching, Sendable {
     private let itemLister: any OnePasswordItemListing
     private let diagnostics: RememBarDiagnostics
+    private let aliases: AliasGroups
 
     init(
         itemLister: (any OnePasswordItemListing)? = nil,
-        diagnostics: RememBarDiagnostics = .shared
+        diagnostics: RememBarDiagnostics = .shared,
+        aliases: AliasGroups = .empty
     ) {
         self.itemLister = itemLister ?? OnePasswordCLIItemLister()
         self.diagnostics = diagnostics
+        self.aliases = aliases
     }
 
     func searchResponse(query: String, refinements: [String], limit: Int) async -> MemorySearchResponse {
@@ -17,12 +20,15 @@ struct OnePasswordSearchProvider: MemorySearching, Sendable {
         guard !terms.isEmpty else {
             return MemorySearchResponse(sourceStatuses: [Self.status(state: .skipped, detail: "No search terms")])
         }
+        // Alias members broaden token matching; the phrase bonus stays on the original terms.
+        let matchTerms = aliases.expand(terms)
+        let phrase = terms.joined(separator: " ")
 
         do {
             let items = try await itemLister.listItems()
             let results = items
                 .compactMap { item -> (MemoryResult, Int)? in
-                    let score = Self.score(item: item, terms: terms)
+                    let score = Self.score(item: item, terms: matchTerms, phrase: phrase)
                     guard score > 0 else { return nil }
                     return (MemoryResult(onePasswordItem: item, rank: score), score)
                 }
@@ -51,7 +57,7 @@ struct OnePasswordSearchProvider: MemorySearching, Sendable {
         }
     }
 
-    private static func score(item: OnePasswordItemSummary, terms: [String]) -> Int {
+    private static func score(item: OnePasswordItemSummary, terms: [String], phrase: String) -> Int {
         let titleTokens = Set(MemorySearchTokenizer.tokenize(item.title))
         let vaultTokens = Set(MemorySearchTokenizer.tokenize(item.vaultName))
         let categoryTokens = Set(MemorySearchTokenizer.tokenize(item.categoryDisplayName))
@@ -65,7 +71,7 @@ struct OnePasswordSearchProvider: MemorySearching, Sendable {
                 score += 25
             }
         }
-        if item.title.localizedCaseInsensitiveContains(terms.joined(separator: " ")) {
+        if item.title.localizedCaseInsensitiveContains(phrase) {
             score += 200
         }
         return score
