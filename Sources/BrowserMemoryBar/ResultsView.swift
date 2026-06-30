@@ -49,11 +49,14 @@ struct ResultsList: View {
             VStack(spacing: Tokens.space) {
                 ForEach(Array(store.results.enumerated()), id: \.element.id) { index, result in
                     let isSelected = store.selectedID == result.id
+                    // Dim the others only when the selected row is actually on THIS page — a
+                    // selection preserved on another page mustn't leave every visible row dimmed.
+                    let selectionVisible = store.results.contains { $0.id == store.selectedID }
                     ResultLine(
                         result: result,
                         index: index,
                         isSelected: isSelected,
-                        isDimmed: store.selectedID != nil && !isSelected,
+                        isDimmed: selectionVisible && !isSelected,
                         select: { store.select(result) },
                         open: { store.open(result) }
                     )
