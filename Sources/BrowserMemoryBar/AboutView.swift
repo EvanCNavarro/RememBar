@@ -241,7 +241,9 @@ private struct AboutMenuRow: View {
     }
 }
 
-/// The quiet "made with" sign-off under the version. The heart is an icon, never an emoji.
+/// The quiet "made with ♥ & robots" sign-off under the version. Both glyphs are icons (no emoji);
+/// the robot is hand-drawn because macOS 14 has no robot SF Symbol — a generic robot says "built
+/// with AI" without leaning on any vendor's logo.
 private struct MadeWithSignoff: View {
     var body: some View {
         HStack(spacing: Tokens.micro) {
@@ -249,10 +251,46 @@ private struct MadeWithSignoff: View {
             Image(systemName: "heart.fill")
                 .font(.system(size: 9))
                 .foregroundStyle(.pink)
-            Text("& Vibes")
+            Text("&")
+            RobotGlyph(color: Tokens.muted)
+                .frame(width: 13, height: 13)
         }
         .font(Tokens.caption)
         .foregroundStyle(Tokens.quiet)
+    }
+}
+
+/// A minimal robot head (antenna + rounded head + two eyes), drawn so it reads cleanly at ~13pt.
+private struct RobotGlyph: View {
+    var color: Color
+
+    var body: some View {
+        Canvas { context, size in
+            let s = size.width
+            func pt(_ x: CGFloat, _ y: CGFloat) -> CGPoint { CGPoint(x: x * s, y: y * s) }
+            let line = s * 0.09
+
+            // Antenna: a stem with a ball on top.
+            var stem = Path()
+            stem.move(to: pt(0.5, 0.14))
+            stem.addLine(to: pt(0.5, 0.30))
+            context.stroke(stem, with: .color(color), lineWidth: line)
+            let ball = s * 0.085
+            context.fill(Path(ellipseIn: CGRect(x: 0.5 * s - ball, y: 0.06 * s, width: ball * 2, height: ball * 2)),
+                         with: .color(color))
+
+            // Head.
+            let head = Path(roundedRect: CGRect(x: 0.16 * s, y: 0.30 * s, width: 0.68 * s, height: 0.60 * s),
+                            cornerRadius: 0.18 * s)
+            context.stroke(head, with: .color(color), lineWidth: line)
+
+            // Eyes.
+            let eye = s * 0.08
+            for cx in [0.37, 0.63] {
+                context.fill(Path(ellipseIn: CGRect(x: cx * s - eye, y: 0.58 * s - eye, width: eye * 2, height: eye * 2)),
+                             with: .color(color))
+            }
+        }
     }
 }
 
