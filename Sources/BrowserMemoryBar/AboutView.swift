@@ -90,20 +90,20 @@ struct AboutPopover: View {
         .background(SolidPopoverChrome(color: Tokens.panel))
         .overlay {
             if showActions {
-                // Full-panel tap catcher (dismiss on outside click) + the dropdown right-aligned
-                // under the "…", so it stays contained inside the About panel.
-                Color.clear
-                    .contentShape(Rectangle())
-                    .onTapGesture { showActions = false }
-                    .overlay(alignment: .topTrailing) {
-                        ActionsDropdown(
-                            onCheckForUpdates: onCheckForUpdates,
-                            onRemove: onUninstall == nil ? nil : { confirmingRemoval = true },
-                            dismiss: { showActions = false }
-                        )
-                        .padding(.top, 46)
-                        .padding(.trailing, Tokens.space + Tokens.micro)
-                    }
+                // Tap catcher (dismiss on outside click) BEHIND the dropdown as ZStack siblings, so
+                // hover reaches the dropdown rows (an .overlay-of-the-catcher can swallow it).
+                ZStack(alignment: .topTrailing) {
+                    Color.clear
+                        .contentShape(Rectangle())
+                        .onTapGesture { showActions = false }
+                    ActionsDropdown(
+                        onCheckForUpdates: onCheckForUpdates,
+                        onRemove: onUninstall == nil ? nil : { confirmingRemoval = true },
+                        dismiss: { showActions = false }
+                    )
+                    .padding(.top, 46)
+                    .padding(.trailing, Tokens.space + Tokens.micro)
+                }
             }
         }
         .alert("Remove RememBar?", isPresented: $confirmingRemoval) {
