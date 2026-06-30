@@ -72,7 +72,7 @@ struct AboutPopover: View {
             Divider().overlay(Tokens.line)
 
             // What it does
-            Text("A minimalistic menu-bar search for your system files, browser history, 1Password, etc.")
+            Text("A minimalistic menu-bar search for your system files, browser history, password managers, etc.")
                 .font(Tokens.caption)
                 .foregroundStyle(Tokens.muted)
                 .fixedSize(horizontal: false, vertical: true)
@@ -143,11 +143,12 @@ private struct LearnMoreLink: View {
     let displayText: String
     let url: URL
     @State private var hovered = false
-    @Environment(\.openURL) private var openURL
 
     var body: some View {
         Button {
-            openURL(url)
+            // NSWorkspace, not SwiftUI openURL — the latter silently no-ops in an inactive
+            // menu-bar (.accessory) app.
+            NSWorkspace.shared.open(url)
         } label: {
             HStack(spacing: Tokens.micro + 1) {
                 Text("Learn more:")
