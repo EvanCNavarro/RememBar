@@ -2,7 +2,7 @@
 
 # RememBar
 
-**A minimalistic menu-bar search for your system files, browser history, 1Password, and more.**
+**A minimalistic menu-bar search for your system files, browser history, password managers, and more.**
 
 Type a few words, get what you half-remember — the file, the page you visited, the login —
 without leaving the keyboard. Search runs entirely on your Mac.
@@ -14,7 +14,8 @@ without leaving the keyboard. Search runs entirely on your Mac.
 > [!NOTE]
 > **Early days.** RememBar is a young project I built for myself and a few friends. It works and it's
 > careful with your data, but it isn't notarized by Apple yet, so macOS will warn on first launch
-> (see [Install](#install)). Auto-updates are on the [roadmap](#roadmap).
+> (see [Install](#install)). After that, **new versions install in-app** (via Sparkle, EdDSA-signed) —
+> no re-downloading.
 
 ---
 
@@ -26,8 +27,8 @@ on your Mac at once and ranks the best matches:
 - **Files** — via Spotlight (`mdfind`), across your home folder.
 - **Browser history** — Safari, every major Chromium-based browser (Chrome, Arc, Brave, Edge,
   Opera, Vivaldi, Chromium), and every Firefox-based browser (Firefox, Zen, Waterfox, LibreWolf).
-- **1Password** — item **titles, vaults, and categories** (never your passwords), via the 1Password
-  CLI (`op`), if it's installed and you're signed in.
+- **Password managers** — item **titles, vaults, and categories** (never your passwords). Currently
+  **1Password**, via its `op` CLI, if it's installed and you're signed in.
 
 More sources will come over time — hence the *"and more."*
 
@@ -41,7 +42,7 @@ search `evan` and surface `ECN_*` files):
 [["evan", "ecn", "navarro"], ["mom", "mother"]]
 ```
 
-Edits apply on the next launch. Aliases work across files, history, and 1Password.
+Edits apply on the next launch. Aliases work across files, history, and password managers.
 
 ## Install
 
@@ -55,8 +56,8 @@ Edits apply on the next launch. Aliases work across files, history, and 1Passwor
 3. **Grant Full Disk Access** so it can read Safari history and search across your files:
    **System Settings → Privacy & Security → Full Disk Access → enable RememBar.** RememBar will also
    offer a one-click button to this screen when it detects access is missing.
-4. *(Optional)* For 1Password results, install the [1Password CLI](https://developer.1password.com/docs/cli/)
-   (`op`) and sign in.
+4. *(Optional)* For password-manager results (currently **1Password**), install the
+   [1Password CLI](https://developer.1password.com/docs/cli/) (`op`) and sign in.
 
 Requires **macOS 14 (Sonoma) or later.**
 
@@ -65,10 +66,10 @@ Requires **macOS 14 (Sonoma) or later.**
 Your searches and their results stay on your machine. Specifically:
 
 - **Search is local.** File search (`mdfind`), browser-history reads (local SQLite databases), and
-  1Password lookups (`op`) all run on your Mac. Your query text and results are **never sent
+  password-manager lookups (`op`) all run on your Mac. Your query text and results are **never sent
   anywhere**, and there is no analytics or telemetry.
-- **1Password:** only item **metadata** (title, vault, category) is read — never passwords or secret
-  fields. Sensitive file paths and names are redacted from the app's local diagnostic log.
+- **Password managers:** only item **metadata** (title, vault, category) is read — never passwords or
+  secret fields. Sensitive file paths and names are redacted from the app's local diagnostic log.
 - **The only network requests** RememBar makes are to fetch **result icons**: site favicons from
   Google's icon service (`google.com/s2/favicons`) and video thumbnails from YouTube
   (`img.youtube.com`). These reveal a result's domain or video ID to those icon servers — the same
@@ -112,7 +113,7 @@ Requires the Swift toolchain (Xcode 16+ / Swift 6) on macOS 14+.
 - [x] Term families / aliases
 - [x] One-click uninstall
 - [ ] Signed + notarized releases
-- [ ] More sources beyond files / history / 1Password
+- [ ] More sources beyond files / history / password managers
 - [ ] Refinement / follow-up queries
 
 ## Uninstall
