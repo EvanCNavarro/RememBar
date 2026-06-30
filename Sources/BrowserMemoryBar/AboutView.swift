@@ -29,13 +29,6 @@ struct AboutPopover: View {
     var onUninstall: (() -> Void)?
 
     @State private var confirmingRemoval = false
-    @State private var showActions = false
-
-    init(onCheckForUpdates: (() -> Void)? = nil, onUninstall: (() -> Void)? = nil, showingActions: Bool = false) {
-        self.onCheckForUpdates = onCheckForUpdates
-        self.onUninstall = onUninstall
-        _showActions = State(initialValue: showingActions)
-    }
 
     private var versionLine: String {
         let short = Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "0.1.0"
@@ -65,25 +58,10 @@ struct AboutPopover: View {
                 Spacer(minLength: 0)
 
                 if onCheckForUpdates != nil || onUninstall != nil {
-                    EllipsisToggle(isExpanded: $showActions)
-                }
-            }
-
-            // Inline actions revealed by "…": no nested popover, so no focus churn / flicker.
-            if showActions {
-                VStack(alignment: .leading, spacing: 1) {
-                    if let onCheckForUpdates {
-                        AboutMenuRow(title: "Check for Updates", systemImage: "arrow.triangle.2.circlepath") {
-                            showActions = false
-                            onCheckForUpdates()
-                        }
-                    }
-                    if onUninstall != nil {
-                        AboutMenuRow(title: "Remove RememBar…", systemImage: "trash", destructive: true) {
-                            showActions = false
-                            confirmingRemoval = true
-                        }
-                    }
+                    AboutActionsMenu(
+                        onCheckForUpdates: onCheckForUpdates,
+                        onRemove: onUninstall == nil ? nil : { confirmingRemoval = true }
+                    )
                 }
             }
 
@@ -182,62 +160,45 @@ private struct LearnMoreLink: View {
     }
 }
 
-/// The "…" control pinned top-right of the About panel. Toggles the inline actions section below the
-/// header — deliberately NOT a nested popover, which churns focus inside a menu-bar window.
-private struct EllipsisToggle: View {
-    @Binding var isExpanded: Bool
+/// The "…" actions dropdown pinned top-right of the About panel — a native menu with "Check for
+/// Updates" and the rare/destructive "Remove RememBar…", keeping both out of the panel body. A
+/// native menu (not a nested popover) so there's no focus churn.
+private struct AboutActionsMenu: View {
+    var onCheckForUpdates: (() -> Void)?
+    var onRemove: (() -> Void)?
     @State private var hovered = false
 
     var body: some View {
-        Button {
-            isExpanded.toggle()
+        Menu {
+            if let onCheckForUpdates {
+                Button {
+                    onCheckForUpdates()
+                } label: {
+                    Label("Check for Updates", systemImage: "arrow.triangle.2.circlepath")
+                }
+            }
+            if let onRemove {
+                Divider()
+                Button(role: .destructive, action: onRemove) {
+                    Label("Remove RememBar…", systemImage: "trash")
+                }
+            }
         } label: {
             Image(systemName: "ellipsis")
                 .font(.system(size: 14, weight: .semibold))
-                .foregroundStyle((hovered || isExpanded) ? Tokens.text : Tokens.muted)
+                .foregroundStyle(hovered ? Tokens.text : Tokens.muted)
                 .frame(width: Tokens.control, height: Tokens.control)
                 .background(
                     RoundedRectangle(cornerRadius: Tokens.radius, style: .continuous)
-                        .fill((hovered || isExpanded) ? Tokens.rowActive : .clear)
+                        .fill(hovered ? Tokens.rowActive : .clear)
                 )
                 .contentShape(Rectangle())
         }
-        .buttonStyle(.plain)
+        .menuStyle(.borderlessButton)
+        .menuIndicator(.hidden)
+        .fixedSize()
         .onHover { hovered = $0 }
         .accessibilityLabel("More actions")
-    }
-}
-
-/// One row inside the About "…" popover.
-private struct AboutMenuRow: View {
-    let title: String
-    let systemImage: String
-    var destructive = false
-    let action: () -> Void
-    @State private var hovered = false
-
-    var body: some View {
-        Button(action: action) {
-            HStack(spacing: Tokens.micro + 1) {
-                Image(systemName: systemImage)
-                    .font(.system(size: 11, weight: .medium))
-                    .frame(width: 16)
-                Text(title)
-                Spacer(minLength: 0)
-            }
-            .font(Tokens.caption)
-            .foregroundStyle(destructive ? Color.red : Tokens.text)
-            .padding(.horizontal, Tokens.micro + 2)
-            .frame(height: Tokens.controlButton)
-            .frame(maxWidth: .infinity)
-            .background(
-                RoundedRectangle(cornerRadius: Tokens.radius - 1, style: .continuous)
-                    .fill(hovered ? Tokens.rowActive : .clear)
-            )
-            .contentShape(Rectangle())
-        }
-        .buttonStyle(.plain)
-        .onHover { hovered = $0 }
     }
 }
 

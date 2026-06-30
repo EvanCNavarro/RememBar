@@ -52,8 +52,6 @@ struct PanelRenderTests {
                    to: "panel_render.png")
         try render(AboutPopover(onCheckForUpdates: {}, onUninstall: {}).fixedSize(),
                    to: "panel_about.png")
-        try render(AboutPopover(onCheckForUpdates: {}, onUninstall: {}, showingActions: true).fixedSize(),
-                   to: "panel_about_actions.png")
     }
 
     @MainActor
