@@ -29,6 +29,13 @@ struct AboutPopover: View {
     var onUninstall: (() -> Void)?
 
     @State private var confirmingRemoval = false
+    @State private var showActions = false
+
+    init(onCheckForUpdates: (() -> Void)? = nil, onUninstall: (() -> Void)? = nil, showingActions: Bool = false) {
+        self.onCheckForUpdates = onCheckForUpdates
+        self.onUninstall = onUninstall
+        _showActions = State(initialValue: showingActions)
+    }
 
     private var versionLine: String {
         let short = Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "0.1.0"
@@ -58,10 +65,7 @@ struct AboutPopover: View {
                 Spacer(minLength: 0)
 
                 if onCheckForUpdates != nil || onUninstall != nil {
-                    AboutActionsMenu(
-                        onCheckForUpdates: onCheckForUpdates,
-                        onRemove: onUninstall == nil ? nil : { confirmingRemoval = true }
-                    )
+                    EllipsisButton(isOn: $showActions)
                 }
             }
 
@@ -84,6 +88,24 @@ struct AboutPopover: View {
         .background(Tokens.panel)
         // Match the system NSPopover's arrow to the panel color (see SolidPopoverChrome).
         .background(SolidPopoverChrome(color: Tokens.panel))
+        .overlay {
+            if showActions {
+                // Full-panel tap catcher (dismiss on outside click) + the dropdown right-aligned
+                // under the "…", so it stays contained inside the About panel.
+                Color.clear
+                    .contentShape(Rectangle())
+                    .onTapGesture { showActions = false }
+                    .overlay(alignment: .topTrailing) {
+                        ActionsDropdown(
+                            onCheckForUpdates: onCheckForUpdates,
+                            onRemove: onUninstall == nil ? nil : { confirmingRemoval = true },
+                            dismiss: { showActions = false }
+                        )
+                        .padding(.top, 46)
+                        .padding(.trailing, Tokens.space + Tokens.micro)
+                    }
+            }
+        }
         .alert("Remove RememBar?", isPresented: $confirmingRemoval) {
             Button("Move to Trash", role: .destructive) { onUninstall?() }
             Button("Cancel", role: .cancel) {}
@@ -160,45 +182,109 @@ private struct LearnMoreLink: View {
     }
 }
 
-/// The "…" actions dropdown pinned top-right of the About panel — a native menu with "Check for
-/// Updates" and the rare/destructive "Remove RememBar…", keeping both out of the panel body. A
-/// native menu (not a nested popover) so there's no focus churn.
-private struct AboutActionsMenu: View {
-    var onCheckForUpdates: (() -> Void)?
-    var onRemove: (() -> Void)?
+/// The "…" button pinned top-right of the About panel; toggles the actions dropdown.
+private struct EllipsisButton: View {
+    @Binding var isOn: Bool
     @State private var hovered = false
 
     var body: some View {
-        Menu {
-            if let onCheckForUpdates {
-                Button {
-                    onCheckForUpdates()
-                } label: {
-                    Label("Check for Updates", systemImage: "arrow.triangle.2.circlepath")
-                }
-            }
-            if let onRemove {
-                Divider()
-                Button(role: .destructive, action: onRemove) {
-                    Label("Remove RememBar…", systemImage: "trash")
-                }
-            }
+        Button {
+            isOn.toggle()
         } label: {
             Image(systemName: "ellipsis")
                 .font(.system(size: 14, weight: .semibold))
-                .foregroundStyle(hovered ? Tokens.text : Tokens.muted)
+                .foregroundStyle((hovered || isOn) ? Tokens.text : Tokens.muted)
                 .frame(width: Tokens.control, height: Tokens.control)
                 .background(
                     RoundedRectangle(cornerRadius: Tokens.radius, style: .continuous)
-                        .fill(hovered ? Tokens.rowActive : .clear)
+                        .fill((hovered || isOn) ? Tokens.rowActive : .clear)
                 )
                 .contentShape(Rectangle())
         }
-        .menuStyle(.borderlessButton)
-        .menuIndicator(.hidden)
-        .fixedSize()
+        .buttonStyle(.plain)
         .onHover { hovered = $0 }
         .accessibilityLabel("More actions")
+    }
+}
+
+/// A self-contained dropdown card (right-aligned under the "…") with the panel's actions. Rendered
+/// as an in-panel overlay — not a system menu/popover — so it stays INSIDE the About panel, keeps
+/// its icons, and gives the destructive row a proper red hover.
+private struct ActionsDropdown: View {
+    var onCheckForUpdates: (() -> Void)?
+    var onRemove: (() -> Void)?
+    let dismiss: () -> Void
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 1) {
+            if let onCheckForUpdates {
+                AboutMenuRow(title: "Check for Updates", systemImage: "arrow.triangle.2.circlepath") {
+                    dismiss()
+                    onCheckForUpdates()
+                }
+            }
+            if let onRemove {
+                AboutMenuRow(title: "Remove RememBar…", systemImage: "trash", destructive: true) {
+                    dismiss()
+                    onRemove()
+                }
+            }
+        }
+        .padding(Tokens.micro)
+        .frame(width: 196)
+        .background(
+            RoundedRectangle(cornerRadius: Tokens.radius, style: .continuous)
+                .fill(Tokens.field)
+        )
+        .overlay(
+            RoundedRectangle(cornerRadius: Tokens.radius, style: .continuous)
+                .stroke(Tokens.line, lineWidth: 1)
+        )
+        .shadow(color: .black.opacity(0.35), radius: 10, y: 4)
+    }
+}
+
+/// One row in the actions dropdown — icon + title with a hover highlight. The destructive row is red
+/// text, then red fill / white text on hover (the macOS delete-item feel).
+private struct AboutMenuRow: View {
+    let title: String
+    let systemImage: String
+    var destructive = false
+    let action: () -> Void
+    @State private var hovered = false
+
+    private var foreground: Color {
+        if destructive { return hovered ? .white : .red }
+        return Tokens.text
+    }
+
+    private var rowFill: Color {
+        guard hovered else { return .clear }
+        return destructive ? .red : Tokens.rowActive
+    }
+
+    var body: some View {
+        Button(action: action) {
+            HStack(spacing: Tokens.micro + 2) {
+                Image(systemName: systemImage)
+                    .font(.system(size: 11, weight: .medium))
+                    .frame(width: 15)
+                Text(title)
+                Spacer(minLength: 0)
+            }
+            .font(Tokens.caption)
+            .foregroundStyle(foreground)
+            .padding(.horizontal, Tokens.micro + 2)
+            .frame(height: Tokens.controlButton)
+            .frame(maxWidth: .infinity)
+            .background(
+                RoundedRectangle(cornerRadius: Tokens.radius - 1, style: .continuous)
+                    .fill(rowFill)
+            )
+            .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+        .onHover { hovered = $0 }
     }
 }
 
