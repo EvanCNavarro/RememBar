@@ -20,14 +20,19 @@ struct MemoryPanel: View {
 
             if !store.baseQuery.isEmpty {
                 QueryContext(label: store.phaseLabel, value: store.contextValue)
+                    .transition(.opacity)
             }
 
             if store.isLoading {
                 LoadingRows()
+                    .transition(.opacity)
             }
 
             if !store.results.isEmpty {
                 ResultsList(store: store)
+                    // Instant in (the rows do their own staggered entrance); fade out on clear so the
+                    // panel flushes gracefully instead of popping to empty.
+                    .transition(.asymmetric(insertion: .identity, removal: .opacity))
             }
 
             // Source status sits BELOW results and shows only actionable problems — results are
@@ -59,7 +64,7 @@ private struct CommandField: View {
                 .accessibilityLabel("Search files and browser history")
 
             if store.canClearSearch {
-                IconControlButton(action: store.clearSearch) {
+                IconControlButton(action: { withAnimation(.easeInOut(duration: 0.2)) { store.clearSearch() } }) {
                     Image(systemName: "xmark")
                         .font(.system(size: 10, weight: .bold))
                 }
