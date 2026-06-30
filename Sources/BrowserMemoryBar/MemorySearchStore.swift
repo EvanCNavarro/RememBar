@@ -317,19 +317,28 @@ final class MemorySearchStore: ObservableObject {
     func setSortMode(_ mode: SortMode) {
         guard mode != sortMode else { return }
         sortMode = mode
-        currentPage = 0
+        // Keep the current selection visible across the re-sort: page to where it now sits.
+        if let selectedID, let index = orderedResults.firstIndex(where: { $0.id == selectedID }) {
+            currentPage = index / pageSize
+        } else {
+            currentPage = 0
+        }
         applyCurrentPage()
     }
 
     private func applyCurrentPage() {
         let ordered = orderedResults
         let start = currentPage * pageSize
-        guard start < ordered.count else {
+        if start < ordered.count {
+            results = Array(ordered.dropFirst(start).prefix(pageSize))
+        } else {
             results = []
-            return
         }
-        results = Array(ordered.dropFirst(start).prefix(pageSize))
-        selectedID = nil
+        // Preserve the selection across re-sort / pagination; drop it only if the selected result
+        // no longer exists at all (a fresh search clears it explicitly elsewhere).
+        if let selectedID, !ordered.contains(where: { $0.id == selectedID }) {
+            self.selectedID = nil
+        }
     }
 }
 

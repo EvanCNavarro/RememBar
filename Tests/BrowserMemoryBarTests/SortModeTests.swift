@@ -43,4 +43,26 @@ import Testing
         let back = await MainActor.run { store.results.map(\.title) }
         #expect(back == ["a.txt", "b.txt", "c.txt"])
     }
+
+    @Test func switchingSortKeepsTheSelection() async {
+        let store = await MainActor.run { MemorySearchStore(searchProvider: DatedProvider(), pageSize: 5) }
+        await MainActor.run {
+            store.inputText = "x"
+            store.submit()
+        }
+        let ready = await eventually {
+            await MainActor.run { store.phase == .results && store.results.count == 3 }
+        }
+        #expect(ready)
+
+        // Select a result, then switch sort — the selection must survive (it used to be wiped).
+        let selected = await MainActor.run { () -> MemoryResult.ID? in
+            store.selectedID = store.results.first?.id
+            return store.selectedID
+        }
+        #expect(selected != nil)
+        await MainActor.run { store.setSortMode(.recent) }
+        let afterSwitch = await MainActor.run { store.selectedID }
+        #expect(afterSwitch == selected)
+    }
 }
