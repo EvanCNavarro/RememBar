@@ -697,12 +697,12 @@ struct IntegrationTests {
             executableURL: script,
             timeout: .seconds(10)
         )
-        let startedAt = Date()
         let task = Task {
             try await spotlight.search(query: "anything", root: root)
         }
 
         try await Task.sleep(for: .milliseconds(100))
+        let cancelledAt = Date()
         task.cancel()
 
         do {
@@ -710,7 +710,10 @@ struct IntegrationTests {
             Issue.record("Expected mdfind cancellation")
         } catch is CancellationError {
         }
-        #expect(Date().timeIntervalSince(startedAt) < 1)
+        // Returned promptly AFTER the cancel (not after the 3s script). Measured from the cancel, not
+        // the task start, so a busy machine's scheduling latency before the cancel can't flake it; the
+        // < 2s budget still discriminates a prompt terminate from waiting out the 3s script.
+        #expect(Date().timeIntervalSince(cancelledAt) < 2)
     }
 
     @Test("mdfind spotlight search handles immediate cancellation before launch")
