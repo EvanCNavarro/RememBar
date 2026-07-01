@@ -55,6 +55,15 @@ struct GalleryView: View {
 
     private static let panelStages: [Stage] = [.empty, .results, .loading, .about, .aboutActions]
     private static let updateStages: [Stage] = [.updateAvailable, .updateChecking, .updateReady, .updateUpToDate]
+    private static let sampleReleaseNotes = [
+        "Term families (aliases) across files, history & password managers",
+        "One-click \"Remove RememBar\" uninstaller",
+        "Redesigned About panel + smoother result animations",
+        "Custom in-app update flow (this dialog)",
+        "Faster Spotlight indexing on large home folders",
+        "Fixed Safari history reads under Full Disk Access",
+        "Improved keyboard navigation and focus handling"
+    ]
 
     // Defaults to the app's real default (.empty); REMEMBAR_GALLERY_STAGE=about|results|loading|... lets
     // a launch jump straight to a state for review without editing code.
@@ -72,6 +81,7 @@ struct GalleryView: View {
         searchProvider: GalleryFixedProvider(response: GallerySampleData.response)
     )
     @State private var loadingStore = MemorySearchStore(searchProvider: GallerySlowProvider())
+    @State private var notesExpanded = true
 
     var body: some View {
         HStack(spacing: 0) {
@@ -156,13 +166,17 @@ struct GalleryView: View {
         case .aboutActions:
             AboutPopover(onCheckForUpdates: {}, onUninstall: {}, showingActions: true)
         case .updateAvailable:
-            UpdateAvailableView()
+            GalleryDialogFrame {
+                UpdateDialog.available(version: "0.2.0", currentVersion: "0.1.0",
+                                       notes: Self.sampleReleaseNotes, notesExpanded: $notesExpanded,
+                                       onInstall: {}, onRemindLater: {})
+            }
         case .updateChecking:
-            UpdateCheckingView()
+            GalleryDialogFrame { UpdateDialog.checking(onCancel: {}) }
         case .updateReady:
-            UpdateReadyView()
+            GalleryDialogFrame { UpdateDialog.ready(version: "0.2.0", onRestart: {}) }
         case .updateUpToDate:
-            UpToDateView()
+            GalleryDialogFrame { UpdateDialog.upToDate(version: "0.2.0", onOK: {}) }
         }
     }
 }
@@ -199,7 +213,8 @@ private enum GallerySampleData {
                          modifiedAt: Date(timeIntervalSince1970: 1_780_000_000), rank: 60)
         ]
         let statuses: [MemorySearchSourceStatus] = [
-            MemorySearchSourceStatus(id: "safari", sourceName: "Safari", state: .blocked, detail: "Permission required"),
+            MemorySearchSourceStatus(id: "safari", sourceName: "Safari", state: .blocked,
+                                     detail: "Permission required"),
             MemorySearchSourceStatus(id: "chrome", sourceName: "Chrome", state: .searched, detail: "522 visits")
         ]
         return MemorySearchResponse(results: results, sourceStatuses: statuses)
