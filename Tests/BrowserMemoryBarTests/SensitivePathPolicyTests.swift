@@ -95,4 +95,13 @@ struct SensitivePathPolicyTests {
         #expect(inDetail.contains("Codes.txt") == false)
         #expect(inDetail.hasPrefix("Matched /Users/x/"))
     }
+
+    @Test("over-redacts a keyword sentence with no path separator (fails safe)")
+    func overRedactsKeywordSentenceWithoutSeparator() {
+        // A bare sentence carrying a secret keyword but no "/" and no list separator is a single
+        // token, so the whole thing collapses to the placeholder. This is intentional fail-safe
+        // over-redaction (a diagnostic string is hidden rather than risk leaking), pinned here.
+        #expect(SensitivePathPolicy.redactingSensitivePaths(in: "my recovery notes")
+            == SensitivePathPolicy.redactionPlaceholder)
+    }
 }
