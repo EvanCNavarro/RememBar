@@ -117,11 +117,17 @@ struct AboutPopover: View {
     }
 }
 
-/// The app's own icon (the real colorful AppIcon in the running app). Falls back to a brand tile
-/// where no app icon is available (e.g. the offscreen render harness).
-private struct AppIconView: View {
+/// The app's own icon. Prefers the real AppIcon from the module bundle so it renders correctly in
+/// the dev gallery AND the shipped app — `NSApp.applicationIconImage` is only the real icon once the
+/// app is bundled (a generic folder in `swift run`). Falls back to the runtime icon, then a brand tile.
+struct AppIconView: View {
+    private static let bundledIcon: NSImage? = {
+        guard let url = Bundle.module.url(forResource: "RememBarAppIcon", withExtension: "png") else { return nil }
+        return NSImage(contentsOf: url)
+    }()
+
     var body: some View {
-        if let icon = NSApplication.shared.applicationIconImage {
+        if let icon = Self.bundledIcon ?? NSApplication.shared.applicationIconImage {
             Image(nsImage: icon)
                 .resizable()
                 .interpolation(.high)
@@ -169,11 +175,11 @@ private struct LearnMoreLink: View {
             .frame(height: Tokens.controlButton + 4)
             .background(
                 RoundedRectangle(cornerRadius: Tokens.radius, style: .continuous)
-                    .fill(Tokens.row)
+                    .fill(hovered ? Tokens.rowActive : Tokens.row)
             )
             .overlay(
                 RoundedRectangle(cornerRadius: Tokens.radius, style: .continuous)
-                    .stroke(Tokens.line, lineWidth: 1)
+                    .stroke(hovered ? Tokens.lineStrong : Tokens.line, lineWidth: 1)
             )
             .contentShape(Rectangle())
         }
@@ -183,27 +189,17 @@ private struct LearnMoreLink: View {
     }
 }
 
-/// The "…" button pinned top-right of the About panel; toggles the actions dropdown.
+/// The "…" button pinned top-right of the About panel; toggles the actions dropdown. Uses the same
+/// `IconControlButton` as the search panel's "?" so the two read as a matched pair — same size,
+/// radius, outline, and hover response (active while the dropdown is open).
 private struct EllipsisButton: View {
     @Binding var isOn: Bool
-    @State private var hovered = false
 
     var body: some View {
-        Button {
-            isOn.toggle()
-        } label: {
+        IconControlButton(size: Tokens.control, radius: Tokens.radius, active: isOn, action: { isOn.toggle() }) {
             Image(systemName: "ellipsis")
                 .font(.system(size: 14, weight: .semibold))
-                .foregroundStyle((hovered || isOn) ? Tokens.text : Tokens.muted)
-                .frame(width: Tokens.control, height: Tokens.control)
-                .background(
-                    RoundedRectangle(cornerRadius: Tokens.radius, style: .continuous)
-                        .fill((hovered || isOn) ? Tokens.rowActive : .clear)
-                )
-                .contentShape(Rectangle())
         }
-        .buttonStyle(.plain)
-        .onHover { hovered = $0 }
         .accessibilityLabel("More actions")
     }
 }

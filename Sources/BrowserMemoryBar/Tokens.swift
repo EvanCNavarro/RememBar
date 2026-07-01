@@ -17,6 +17,9 @@ enum Tokens {
     static let muted = Color(red: 0.596, green: 0.616, blue: 0.643)
     static let quiet = Color(red: 0.451, green: 0.475, blue: 0.506)
     static let warning = Color(red: 0.941, green: 0.635, blue: 0.271)
+    // Primary-action blue (macOS dark-mode system accent) — used for the confirming button in the
+    // update flow, matching Sparkle's own Install button.
+    static let accent = Color(red: 0.039, green: 0.518, blue: 1.0)
 
     static let body = Font.system(size: 13)
     static let caption = Font.system(size: 12)
@@ -25,33 +28,40 @@ enum Tokens {
 
 struct IconButtonStyle: ButtonStyle {
     var active = false
+    /// Hover is tracked by the owning view (ButtonStyle can't hold @State) and passed in, so every
+    /// icon control brightens on hover the same way — resting look is unchanged.
+    var hovered = false
     var radius = Tokens.radius
 
     func makeBody(configuration: Configuration) -> some View {
-        configuration.label
-            .foregroundStyle(active ? Tokens.text : Tokens.muted)
-            .background(active || configuration.isPressed ? Tokens.rowActive : Tokens.row)
+        let lifted = active || hovered || configuration.isPressed
+        return configuration.label
+            .foregroundStyle(lifted ? Tokens.text : Tokens.muted)
+            .background(lifted ? Tokens.rowActive : Tokens.row)
             .clipShape(RoundedRectangle(cornerRadius: radius, style: .continuous))
             .overlay {
                 RoundedRectangle(cornerRadius: radius, style: .continuous)
-                    .stroke(active ? Tokens.lineStrong : Tokens.line, lineWidth: 1)
+                    .stroke((active || hovered) ? Tokens.lineStrong : Tokens.line, lineWidth: 1)
             }
     }
 }
 
-/// A square icon control — clear, submit, paginate, settings. One height and radius everywhere.
+/// A square icon control — clear, submit, paginate, settings, the About "?" and "…". One height,
+/// radius, and hover response everywhere.
 struct IconControlButton<Content: View>: View {
     var size: CGFloat = Tokens.controlButton
     var radius: CGFloat = Tokens.micro
     var active = false
     let action: () -> Void
     @ViewBuilder var content: Content
+    @State private var hovered = false
 
     var body: some View {
         Button(action: action) {
             content.frame(width: size, height: size)
         }
-        .buttonStyle(IconButtonStyle(active: active, radius: radius))
+        .buttonStyle(IconButtonStyle(active: active, hovered: hovered, radius: radius))
+        .onHover { hovered = $0 }
     }
 }
 
