@@ -497,12 +497,16 @@ struct IntegrationTests {
           sleep 1
         done
         """)
-        let lister = OnePasswordCLIItemLister(executableURL: scriptURL, timeout: .seconds(2))
+        // Generous timeout on purpose: this test cancels manually (below), so the ProcessRunner
+        // timeout must NOT be a competing terminator — a 2s ceiling races the child's first write
+        // under load and lets the timeout (→ .failed) fire instead of the cancel (→ CancellationError).
+        let lister = OnePasswordCLIItemLister(executableURL: scriptURL, timeout: .seconds(30))
 
         let task = Task {
             try await lister.listItems()
         }
-        let started = await eventually {
+        // Higher attempt budget so a slow process spawn under CI/load can't miss the file-write window.
+        let started = await eventually(attempts: 200) {
             FileManager.default.fileExists(atPath: startedURL.path)
         }
         try #require(started)
@@ -516,7 +520,7 @@ struct IntegrationTests {
         } catch {
             Issue.record("cancelled 1Password list task threw \(error) instead of CancellationError")
         }
-        let terminated = await eventually {
+        let terminated = await eventually(attempts: 200) {
             FileManager.default.fileExists(atPath: terminatedURL.path)
         }
         #expect(terminated)
@@ -697,6 +701,26 @@ struct IntegrationTests {
             Issue.record("Expected mdfind timeout")
         } catch SpotlightSearchError.timedOut {
         }
+    }
+
+    @Test("mdfind spotlight search drops non-path lines merged from stderr")
+    func mdfindSpotlightSearchDropsNonPathLines() async throws {
+        let root = try temporaryDirectory()
+        let script = root.appendingPathComponent("noisy-mdfind")
+        // mdfind merges stderr into stdout (separateStderr: false); a warning line on an otherwise
+        // successful run must not be mistaken for a result path.
+        try createTextFile(at: script, contents: """
+        #!/bin/sh
+        echo '/Users/example/one.txt'
+        echo '[UserQueryParser] note: ignoring malformed token'
+        echo '/Users/example/two.txt'
+        """)
+        try FileManager.default.setAttributes([.posixPermissions: 0o755], ofItemAtPath: script.path)
+        let spotlight = MdfindSpotlightSearch(executableURL: script, timeout: .seconds(10))
+
+        let results = try await spotlight.search(query: "anything", root: root)
+
+        #expect(results.map(\.path) == ["/Users/example/one.txt", "/Users/example/two.txt"])
     }
 
     @Test("mdfind spotlight search cancels running processes")

@@ -55,6 +55,9 @@ struct MdfindSpotlightSearch: SpotlightSearching, Sendable {
 
         let urls = text
             .split(separator: "\n")
+            // mdfind's stderr is merged into stdout (separateStderr: false), so a diagnostic line on
+            // an otherwise-successful run can appear here — keep only absolute file paths.
+            .filter { $0.hasPrefix("/") }
             .map { URL(fileURLWithPath: String($0)) }
         var fields = processFields(query: query, root: root, processID: result.processID)
         fields["terminationStatus"] = "\(result.terminationStatus)"
