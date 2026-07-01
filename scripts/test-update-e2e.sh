@@ -59,9 +59,14 @@ for spec in "old:$OLD_VER" "new:$NEW_VER"; do
 done
 
 # 4. Package the new version + generate the signed appcast.
+#    Drop a release-notes markdown file named to match the archive (RememBar.zip -> RememBar.md) so
+#    generate_appcast --embed-release-notes inlines it — mirrors the real release workflow, and lets
+#    step 5b assert "What's new" would actually populate the custom update dialog.
 echo "→ signing + generating appcast…"
 ( cd "$WORK/new" && ditto -c -k --keepParent "RememBar.app" "RememBar.zip" ) || fail "could not zip v$NEW_VER"
-"$GEN_APPCAST" --download-url-prefix "https://example.invalid/" "$WORK/new" >/dev/null 2>&1 \
+NOTES_MARKER="e2e release note marker $NEW_VER"
+printf -- '- %s\n- Second bullet\n' "$NOTES_MARKER" > "$WORK/new/RememBar.md"
+"$GEN_APPCAST" --embed-release-notes --download-url-prefix "https://example.invalid/" "$WORK/new" >/dev/null 2>&1 \
   || fail "generate_appcast failed (Keychain key available + allowed?)"
 APPCAST="$WORK/new/appcast.xml"
 [ -f "$APPCAST" ] || fail "appcast.xml was not produced"
@@ -73,6 +78,14 @@ grep -q "<sparkle:version>$NEW_BUILD</sparkle:version>" "$APPCAST" || fail "appc
 SIG_CAST="$(grep -oE 'edSignature="[^"]+"' "$APPCAST" | head -1 | sed 's/^edSignature="//;s/"$//')"
 [ -n "$SIG_CAST" ] || fail "appcast has no EdDSA signature"
 pass "appcast advertises v$NEW_VER ($NEW_BUILD), EdDSA-signed"
+
+# 5b. Release notes must be EMBEDDED as markdown in the item's <description> (not an external
+#     releaseNotesLink, which would 404 since the .md is never uploaded). This is what the custom
+#     driver reads from appcastItem.itemDescription to fill "What's new".
+grep -q 'sparkle:format="markdown"' "$APPCAST" || fail "appcast <description> is not embedded markdown"
+grep -q "$NOTES_MARKER" "$APPCAST" || fail "appcast did not embed the release-notes content"
+grep -q "releaseNotesLink" "$APPCAST" && fail "appcast used an external releaseNotesLink (would 404) instead of embedding"
+pass "release notes embedded inline as markdown (What's new will populate)"
 
 # 6. Cryptographic check: the appcast signature must match a fresh sign of the exact zip.
 #    (Ed25519 is deterministic, so a correct signature reproduces byte-for-byte.)

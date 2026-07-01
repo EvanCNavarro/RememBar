@@ -177,6 +177,15 @@ final class RememBarUserDriver: NSObject, SPUUserDriver, NSWindowDelegate {
     func showUpdateFound(with appcastItem: SUAppcastItem, state: SPUUserUpdateState,
                          reply: @escaping (SPUUserUpdateChoice) -> Void) {
         model.latestVersion = appcastItem.displayVersionString
+        // Embedded release notes ride on the appcast item and are NOT delivered via
+        // showUpdateReleaseNotes — Sparkle only calls that for a downloaded releaseNotesLink
+        // (SPUUIBasedUpdateDriver guards it on releaseNotesURL != nil). Read them here so "What's new"
+        // populates for the common embedded-notes case (generate_appcast --embed-release-notes).
+        if appcastItem.releaseNotesURL == nil, let description = appcastItem.itemDescription {
+            model.releaseNotes = ReleaseNotesParser.items(
+                from: description,
+                format: ReleaseNotesFormat(sparkleFormat: appcastItem.itemDescriptionFormat))
+        }
         setScreen(.available(
             version: appcastItem.displayVersionString,
             current: currentAppVersion,
@@ -188,7 +197,8 @@ final class RememBarUserDriver: NSObject, SPUUserDriver, NSWindowDelegate {
     }
 
     func showUpdateReleaseNotes(with downloadData: SPUDownloadData) {
-        guard let items = Self.noteItems(from: downloadData.data) else { return }
+        // The downloaded-link path — Sparkle delivers these as HTML data.
+        guard let items = ReleaseNotesParser.items(from: downloadData.data) else { return }
         withAnimation(.easeInOut(duration: 0.22)) { model.releaseNotes = items }
         syncWindowSize(animated: true)
     }
@@ -262,26 +272,5 @@ final class RememBarUserDriver: NSObject, SPUUserDriver, NSWindowDelegate {
 
     func showUpdateInFocus() {
         present()
-    }
-
-    // MARK: Release notes
-
-    /// Parse the appcast's release-notes HTML into individual line items (bullets/paragraphs), so the
-    /// dialog can render them as a structured list rather than a wall of text.
-    private static func noteItems(from data: Data) -> [String]? {
-        guard !data.isEmpty else { return nil }
-        let options: [NSAttributedString.DocumentReadingOptionKey: Any] = [
-            .documentType: NSAttributedString.DocumentType.html,
-            .characterEncoding: String.Encoding.utf8.rawValue
-        ]
-        guard let attributed = try? NSAttributedString(data: data, options: options, documentAttributes: nil) else {
-            return nil
-        }
-        let leadingBullets = CharacterSet(charactersIn: "•*-–—\u{2022} \t")
-        let items = attributed.string
-            .components(separatedBy: .newlines)
-            .map { $0.trimmingCharacters(in: .whitespaces).trimmingCharacters(in: leadingBullets) }
-            .filter { !$0.isEmpty }
-        return items.isEmpty ? nil : items
     }
 }

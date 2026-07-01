@@ -51,17 +51,39 @@ jobs:
           echo "version=$VERSION" >> "$GITHUB_OUTPUT"
           echo "sha256=$SHA"     >> "$GITHUB_OUTPUT"
 
+      - name: Stage release notes for this version
+        id: notes
+        run: |
+          VERSION="${GITHUB_REF_NAME#v}"
+          SRC="release-notes/${VERSION}.md"
+          if [ -f "$SRC" ]; then
+            # Named to match the archive (RememBar.zip) so generate_appcast picks it up as this
+            # item's notes, and embeds them inline (next step). Same file feeds the Release body.
+            cp "$SRC" dist/RememBar.md
+            echo "has_notes=true" >> "$GITHUB_OUTPUT"
+            echo "Staged $SRC -> dist/RememBar.md"
+          else
+            echo "has_notes=false" >> "$GITHUB_OUTPUT"
+            echo "::warning::No $SRC — release will ship without a 'What's new' section."
+          fi
+
       - name: Generate EdDSA-signed appcast
         env:
           SPARKLE_ED_PRIVATE_KEY: ${{ secrets.SPARKLE_ED_PRIVATE_KEY }}
         run: |
           printf '%s' "$SPARKLE_ED_PRIVATE_KEY" > /tmp/ed_private.key
+          # --embed-release-notes inlines dist/RememBar.md into the item's <description> as markdown
+          # CDATA (the custom driver reads appcastItem.itemDescription). Without it, a .md would become
+          # an external releaseNotesLink pointing at an asset we don't upload — a 404.
           /tmp/sparkle-tools/bin/generate_appcast \
             --ed-key-file /tmp/ed_private.key \
+            --embed-release-notes \
             --download-url-prefix "https://github.com/${GITHUB_REPOSITORY}/releases/download/${GITHUB_REF_NAME}/" \
             dist/
           rm -f /tmp/ed_private.key
           test -f dist/appcast.xml
+          # The notes file is embedded now; it must not ship as a loose release asset.
+          rm -f dist/RememBar.md
 
       - name: VirusTotal scan
         id: vt
@@ -85,16 +107,23 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          cat > /tmp/notes.md <<EOF
-          ## RememBar ${{ steps.pkg.outputs.version }}
-
-          ### Verify this download
-          - **SHA-256:** \`${{ steps.pkg.outputs.sha256 }}\`
-          - **VirusTotal:** ${{ steps.vt.outputs.url }}
-          - **Provenance:** \`gh attestation verify RememBar.zip --repo ${GITHUB_REPOSITORY}\`
-
-          Built in GitHub Actions from \`${GITHUB_SHA}\`. Auto-updates are EdDSA-signed.
-          EOF
+          VERSION="${GITHUB_REF_NAME#v}"
+          {
+            echo "## RememBar ${VERSION}"
+            echo
+            # Same source as the embedded appcast notes — one place to author "What's new".
+            if [ "${{ steps.notes.outputs.has_notes }}" = "true" ]; then
+              echo "### What's new"
+              cat "release-notes/${VERSION}.md"
+              echo
+            fi
+            echo "### Verify this download"
+            echo "- **SHA-256:** \`${{ steps.pkg.outputs.sha256 }}\`"
+            echo "- **VirusTotal:** ${{ steps.vt.outputs.url }}"
+            echo "- **Provenance:** \`gh attestation verify RememBar.zip --repo ${GITHUB_REPOSITORY}\`"
+            echo
+            echo "Built in GitHub Actions from \`${GITHUB_SHA}\`. Auto-updates are EdDSA-signed."
+          } > /tmp/notes.md
           gh release create "${GITHUB_REF_NAME}" \
             dist/RememBar.zip dist/appcast.xml \
             --title "RememBar ${{ steps.pkg.outputs.version }}" \
