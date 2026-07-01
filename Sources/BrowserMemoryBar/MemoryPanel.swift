@@ -133,7 +133,11 @@ enum RememBarImage {
     }
 
     #if canImport(AppKit)
-    static var nsMenuGlyph: NSImage? {
+    // Cached: the bundled glyph never changes at runtime, so read + decode it once instead of on
+    // every render (RememBarGlyph.body hits this each pass). nonisolated(unsafe) because RememBarImage
+    // is a non-isolated enum and NSImage isn't Sendable; the image is built once here and only read
+    // afterward (size/isTemplate are set before caching, never mutated later).
+    nonisolated(unsafe) static let nsMenuGlyph: NSImage? = {
         guard let url = menuGlyphURL else {
             return nil
         }
@@ -141,7 +145,7 @@ enum RememBarImage {
         image?.size = menuGlyphSize
         image?.isTemplate = true
         return image
-    }
+    }()
 
     private static var menuGlyphURL: URL? {
         Bundle.packagedResourceURL("RememBarMenuGlyph", withExtension: "pdf")
