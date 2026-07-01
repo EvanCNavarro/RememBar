@@ -126,7 +126,10 @@ struct ResultThumbnail: View {
     }
 
     var body: some View {
-        Group {
+        // Build the presentation once per render — it parses the result URL — and thread it into the
+        // fallback rather than recomputing via the `presentation` property on each access.
+        let presentation = self.presentation
+        return Group {
             switch presentation.source {
             case .remoteImage(let thumbnailURL, let kind):
                 RemoteMemoryThumbnail(
@@ -139,14 +142,14 @@ struct ResultThumbnail: View {
                         iconImage(image)
                     }
                 } placeholder: {
-                    fallbackView
+                    fallbackView(presentation)
                 }
             case .filePreview(let fileURL):
                 QuickLookFileThumbnail(fileURL: fileURL) {
-                    fallbackView
+                    fallbackView(presentation)
                 }
             case .fallback:
-                fallbackView
+                fallbackView(presentation)
             }
         }
         .frame(width: 64, height: 36)
@@ -165,7 +168,7 @@ struct ResultThumbnail: View {
         }
     }
 
-    private var fallbackView: some View {
+    private func fallbackView(_ presentation: MemoryThumbnailPresentation) -> some View {
         ZStack {
             RoundedRectangle(cornerRadius: Tokens.micro, style: .continuous)
                 .fill(Tokens.field)
