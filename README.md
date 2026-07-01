@@ -2,7 +2,7 @@
 
 # RememBar
 
-**A minimalistic menu-bar search for your system files, browser history, password managers, and more.**
+**A minimalist menu-bar search for your system files, browser history, password managers, and more.**
 
 Type a few words, get what you half-remember — the file, the page you visited, the login —
 without leaving the keyboard. Search runs entirely on your Mac.
@@ -110,11 +110,13 @@ Requires the Swift toolchain (Xcode 16+ / Swift 6) on macOS 14+.
 ## Roadmap
 
 - [x] Sparkle auto-updates (no App Store needed)
+- [x] Custom in-app update experience (RememBar's own UI, EdDSA-signed)
 - [x] Term families / aliases
 - [x] One-click uninstall
+- [x] Editable, persistent search query (stays in the box like Spotlight)
 - [ ] Signed + notarized releases
 - [ ] More sources beyond files / history / password managers
-- [ ] Refinement / follow-up queries
+- [ ] Live-as-you-type search (results per keystroke; Enter opens the result)
 
 ## Uninstall
 

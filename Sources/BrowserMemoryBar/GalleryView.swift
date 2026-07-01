@@ -110,7 +110,7 @@ struct GalleryView: View {
                 .padding(.bottom, Tokens.space)
 
             sidebarGroup("Panel & About", Self.panelStages)
-            sidebarGroup("Update flow — proposed", Self.updateStages)
+            sidebarGroup("Update flow", Self.updateStages)
             Spacer()
         }
         .padding(Tokens.space + Tokens.micro)
