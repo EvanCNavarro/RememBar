@@ -72,7 +72,7 @@ struct AboutPopover: View {
             Divider().overlay(Tokens.line)
 
             // What it does
-            Text("A minimalistic menu-bar search for your system files, browser history, password managers, etc.")
+            Text("A minimalist menu-bar search for your system files, browser history, password managers, etc.")
                 .font(Tokens.caption)
                 .foregroundStyle(Tokens.muted)
                 .fixedSize(horizontal: false, vertical: true)

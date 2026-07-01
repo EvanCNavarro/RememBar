@@ -258,7 +258,7 @@ extension UpdateDialog {
     static func checking(onCancel: @escaping () -> Void) -> UpdateDialog {
         UpdateDialog(
             header: "Checking for updates…",
-            subheader: "Contacting the update server…",
+            subheader: "Contacting the update server",
             middle: .progress(nil),
             secondary: .init(title: "Cancel", run: onCancel))
     }
