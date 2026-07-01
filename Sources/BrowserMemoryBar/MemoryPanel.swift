@@ -18,7 +18,7 @@ struct MemoryPanel: View {
                 AboutControl(onCheckForUpdates: onCheckForUpdates, onUninstall: onUninstall)
             }
 
-            if !store.baseQuery.isEmpty {
+            if store.showsResultsQuery {
                 QueryContext(label: store.phaseLabel, value: store.contextValue)
                     .transition(.opacity)
             }

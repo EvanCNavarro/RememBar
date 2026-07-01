@@ -1,6 +1,10 @@
 import AppKit
 import Foundation
 
+// The central search coordinator — state, orchestration, paging, and presentation helpers all in one
+// place; it sits a few lines over the 500 budget.
+// swiftlint:disable file_length
+
 @MainActor
 final class MemorySearchStore: ObservableObject {
     enum Phase {
@@ -91,6 +95,12 @@ final class MemorySearchStore: ObservableObject {
         baseQuery
     }
 
+    /// Show the "Searched X" line only once the field is edited away from the results' query — before
+    /// that it would just duplicate the (now-persistent) field.
+    var showsResultsQuery: Bool {
+        !baseQuery.isEmpty && inputText.trimmingCharacters(in: .whitespacesAndNewlines) != baseQuery
+    }
+
     var totalPages: Int {
         guard !allResults.isEmpty else { return 0 }
         return Int(ceil(Double(allResults.count) / Double(pageSize)))
@@ -141,7 +151,7 @@ final class MemorySearchStore: ObservableObject {
         )
 
         searchTask?.cancel()
-        inputText = ""
+        // Keep the submitted query in the field (Spotlight-style) so it stays visible + editable.
         phase = .loading
         allResults = []
         results = []

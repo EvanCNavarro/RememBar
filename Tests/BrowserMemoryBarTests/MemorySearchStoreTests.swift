@@ -129,6 +129,32 @@ struct MemorySearchStoreTests {
         }
     }
 
+    @Test("submitting keeps the query in the field and gates the context line until edited")
+    func submitKeepsQueryInFieldUntilEdited() async throws {
+        let provider = RequestRecordingSearchProvider()
+        let store = await MainActor.run { MemorySearchStore(searchProvider: provider) }
+
+        await MainActor.run {
+            store.inputText = "web apps"
+            store.submit()
+        }
+        let finished = await eventually {
+            await MainActor.run { store.phase == .results && store.results.isEmpty == false }
+        }
+        try #require(finished)
+
+        await MainActor.run {
+            // The submitted query stays in the field (no clear-on-submit) — visible + editable.
+            #expect(store.inputText == "web apps")
+            #expect(store.baseQuery == "web apps")
+            // Context line hidden while the field matches the shown results' query (no duplicate).
+            #expect(store.showsResultsQuery == false)
+            // Editing the field away from that query surfaces the "Searched X" context again.
+            store.inputText = "web apps pro"
+            #expect(store.showsResultsQuery == true)
+        }
+    }
+
     @Test("memory search store exposes source statuses from response")
     func memorySearchStoreExposesSourceStatuses() async throws {
         let provider = StaticResponseMemorySearchProvider(response: MemorySearchResponse(
