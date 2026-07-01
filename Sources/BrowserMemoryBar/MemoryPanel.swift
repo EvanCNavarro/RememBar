@@ -143,16 +143,8 @@ enum RememBarImage {
     }
 
     private static var menuGlyphURL: URL? {
-        if let url = Bundle.main.url(forResource: "RememBarMenuGlyph", withExtension: "pdf") {
-            return url
-        }
-        if let url = Bundle.module.url(forResource: "RememBarMenuGlyph", withExtension: "pdf") {
-            return url
-        }
-        if let url = Bundle.main.url(forResource: "RememBarMenuGlyph", withExtension: "png") {
-            return url
-        }
-        return Bundle.module.url(forResource: "RememBarMenuGlyph", withExtension: "png")
+        Bundle.packagedResourceURL("RememBarMenuGlyph", withExtension: "pdf")
+            ?? Bundle.packagedResourceURL("RememBarMenuGlyph", withExtension: "png")
     }
     #endif
 }

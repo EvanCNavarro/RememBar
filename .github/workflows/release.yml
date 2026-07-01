@@ -41,6 +41,20 @@ jobs:
           REMEMBAR_DIST_DIR="$PWD/dist" \
           ./scripts/build-remembar-app.sh
 
+      - name: Verify required resources are packaged
+        run: |
+          # Guards the 0.3.0 crash: the app loads these from Contents/Resources at runtime (Bundle.main).
+          # A missing one is a launch crash on every machine but the build machine — block the release.
+          for res in RememBarAppIcon.png RememBar.icns RememBarMenuGlyph.pdf RememBarMenuGlyph.png; do
+            test -f "dist/RememBar.app/Contents/Resources/$res" || { echo "::error::missing Contents/Resources/$res"; exit 1; }
+          done
+          # And no source may reach Bundle.module outside the DEBUG-guarded helper (its accessor
+          # fatalErrors in a packaged app; the baked-in build path is the CI checkout).
+          if grep -rn "Bundle\.module" Sources | grep -v "BundleResources.swift"; then
+            echo "::error::Bundle.module referenced outside the DEBUG-guarded helper"; exit 1
+          fi
+          echo "resources + Bundle.module invariant OK"
+
       - name: Package + checksum
         id: pkg
         run: |

@@ -44,6 +44,11 @@ rm -rf "$APP_DIR" "$ICONSET_DIR"
 mkdir -p "$MACOS_DIR" "$RESOURCES_DIR" "$ICONSET_DIR"
 
 cp "$BUILD_DIR/$EXECUTABLE_NAME" "$MACOS_DIR/$EXECUTABLE_NAME"
+# The app resolves bundled resources via Bundle.main (Contents/Resources) in release — Bundle.module
+# is not available in a hand-packaged .app and its accessor fatalErrors. Every runtime resource the
+# code loads MUST be copied here. RememBarAppIcon.png backs the About/update-dialog icon; omitting it
+# crashed 0.3.0 on launch.
+cp "$PROJECT_DIR/Sources/BrowserMemoryBar/Resources/RememBarAppIcon.png" "$RESOURCES_DIR/RememBarAppIcon.png"
 cp "$PROJECT_DIR/Sources/BrowserMemoryBar/Resources/RememBarMenuGlyph.pdf" "$RESOURCES_DIR/RememBarMenuGlyph.pdf"
 cp "$PROJECT_DIR/Sources/BrowserMemoryBar/Resources/RememBarMenuGlyph.png" "$RESOURCES_DIR/RememBarMenuGlyph.png"
 cp "$PROJECT_DIR/Sources/BrowserMemoryBar/Resources/RememBarMenuGlyph@2x.png" "$RESOURCES_DIR/RememBarMenuGlyph@2x.png"

@@ -122,7 +122,7 @@ struct AboutPopover: View {
 /// app is bundled (a generic folder in `swift run`). Falls back to the runtime icon, then a brand tile.
 struct AppIconView: View {
     private static let bundledIcon: NSImage? = {
-        guard let url = Bundle.module.url(forResource: "RememBarAppIcon", withExtension: "png") else { return nil }
+        guard let url = Bundle.packagedResourceURL("RememBarAppIcon", withExtension: "png") else { return nil }
         return NSImage(contentsOf: url)
     }()
 
