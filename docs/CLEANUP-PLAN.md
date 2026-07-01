@@ -39,6 +39,23 @@ justifies it), `SKIP-unless-asked` (marginal; don't spend the risk).
 
 ---
 
+## Phase 3 — MEASURED (2026-07-01): all CPU items SKIP, backed by numbers
+
+Ran a micro-benchmark against the real code (25 realistic results). Per-search cost:
+- `MemoryResult.kind` (URL parse): ~86µs to touch all 25 once → ~260µs/search. Caching saves ~170µs.
+- `orderedResults` sort of 25: ~197µs per page-flip.
+- Diagnostics `record()`: ~479µs/event → ~8ms/search over ~18 events (the state re-read is only a
+  slice of that).
+
+Against a search that is hundreds of ms (subprocess/SQLite-bound, 620ms debounce), the CPU items are
+imperceptible — **SKIP, confirmed by measurement, not assumption.** The diagnostics ~8ms is the
+largest but invisible and the state-read opt only shaves part of it → SKIP. Full suite verified 5/5
+under 4x CPU load (no other flaky tests). **Only genuinely-open perf item:** remote-image `URLCache`
+(3.2) — network/bandwidth behavior, not microbenchmarkable; marginal for a menu-bar app; still
+deferred pending a real profiling scenario.
+
+### (original analysis retained below)
+
 ## Phase 3 — Optimizations (MEASURE FIRST; the code is already well-optimized)
 
 The review's honest finding: subprocess I/O is off-main, size probes are O(1), icons are cached.
