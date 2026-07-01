@@ -114,9 +114,11 @@ Requires the Swift toolchain (Xcode 16+ / Swift 6) on macOS 14+.
 - [x] Term families / aliases
 - [x] One-click uninstall
 - [x] Editable, persistent search query (stays in the box like Spotlight)
-- [ ] Signed + notarized releases
-- [ ] More sources beyond files / history / password managers
+- [ ] Better onboarding & first-run guidance
 - [ ] Live-as-you-type search (results per keystroke; Enter opens the result)
+- [ ] Smoother update-flow animations
+- [ ] More sources beyond files / history / password managers
+- [ ] Signed + notarized releases *(later — Developer ID)*
 
 ## Uninstall
 
