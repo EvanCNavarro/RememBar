@@ -39,12 +39,15 @@ struct PanelRenderTests {
                          modifiedAt: Date(timeIntervalSince1970: 1_780_000_000), rank: 50)
         ]
         let statuses: [MemorySearchSourceStatus] = [
-            MemorySearchSourceStatus(id: "files", sourceName: "Files", state: .failed, detail: "Could not read this source"),
-            MemorySearchSourceStatus(id: "safari", sourceName: "Safari", state: .blocked, detail: "Permission required"),
+            MemorySearchSourceStatus(
+                id: "files", sourceName: "Files", state: .failed, detail: "Could not read this source"),
+            MemorySearchSourceStatus(
+                id: "safari", sourceName: "Safari", state: .blocked, detail: "Permission required"),
             MemorySearchSourceStatus(id: "chrome", sourceName: "Chrome", state: .searched, detail: "522 visits")
         ]
         let store = MemorySearchStore(
-            searchProvider: FixedResponseProvider(response: MemorySearchResponse(results: results, sourceStatuses: statuses))
+            searchProvider: FixedResponseProvider(
+                response: MemorySearchResponse(results: results, sourceStatuses: statuses))
         )
         store.inputText = "sample"
         store.submit()

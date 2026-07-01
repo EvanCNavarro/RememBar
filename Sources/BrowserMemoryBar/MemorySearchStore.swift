@@ -116,7 +116,10 @@ final class MemorySearchStore: ObservableObject {
             return
         }
         guard phase != .loading else {
-            diagnostics.record(RememBarDiagnosticEvent.searchSubmitIgnored, fields: ["reason": "loading", "query": query])
+            diagnostics.record(
+                RememBarDiagnosticEvent.searchSubmitIgnored,
+                fields: ["reason": "loading", "query": query]
+            )
             return
         }
 
@@ -238,7 +241,11 @@ final class MemorySearchStore: ObservableObject {
     }
 
     private func recordSearchDebounceCancelled() {
-        diagnostics.record(RememBarDiagnosticEvent.searchDebounceCancelled, level: .warning, fields: ["baseQuery": baseQuery])
+        diagnostics.record(
+            RememBarDiagnosticEvent.searchDebounceCancelled,
+            level: .warning,
+            fields: ["baseQuery": baseQuery]
+        )
     }
 
     private func finishSearch() async {
@@ -283,18 +290,30 @@ final class MemorySearchStore: ObservableObject {
         phase = .results
         diagnostics.record(
             RememBarDiagnosticEvent.searchFinished,
-            fields: [
-                "query": query,
-                "refinementCount": "\(activeRefinements.count)",
-                "resultCount": "\(results.count)",
-                "allResultCount": "\(allResults.count)",
-                "sourceStatusCount": "\(sourceStatuses.count)",
-                "page": "\(currentPage + 1)",
-                "totalPages": "\(totalPages)",
-                "topResultIDs": results.prefix(5).map(\.id).joined(separator: ","),
-                "durationMs": "\(Int(Date().timeIntervalSince(startedAt) * 1000))"
-            ]
+            fields: searchFinishedFields(
+                query: query,
+                activeRefinements: activeRefinements,
+                startedAt: startedAt
+            )
         )
+    }
+
+    private func searchFinishedFields(
+        query: String,
+        activeRefinements: [String],
+        startedAt: Date
+    ) -> [String: String] {
+        [
+            "query": query,
+            "refinementCount": "\(activeRefinements.count)",
+            "resultCount": "\(results.count)",
+            "allResultCount": "\(allResults.count)",
+            "sourceStatusCount": "\(sourceStatuses.count)",
+            "page": "\(currentPage + 1)",
+            "totalPages": "\(totalPages)",
+            "topResultIDs": results.prefix(5).map(\.id).joined(separator: ","),
+            "durationMs": "\(Int(Date().timeIntervalSince(startedAt) * 1000))"
+        ]
     }
 
     /// Results in the current sort order. `.relevance` preserves provider ranking; `.recent` sorts
@@ -306,9 +325,9 @@ final class MemorySearchStore: ObservableObject {
         case .recent:
             return allResults.enumerated()
                 .sorted { lhs, rhs in
-                    let l = lhs.element.sortDate ?? .distantPast
-                    let r = rhs.element.sortDate ?? .distantPast
-                    return l == r ? lhs.offset < rhs.offset : l > r
+                    let lhsDate = lhs.element.sortDate ?? .distantPast
+                    let rhsDate = rhs.element.sortDate ?? .distantPast
+                    return lhsDate == rhsDate ? lhs.offset < rhs.offset : lhsDate > rhsDate
                 }
                 .map(\.element)
         }
@@ -409,7 +428,11 @@ struct WorkspaceMemoryResultOpener: MemoryResultOpening {
             guard target.canOpen else {
                 var fields = result.diagnosticFields
                 fields["reason"] = "unsupported_scheme"
-                diagnostics.record(RememBarDiagnosticEvent.resultOpenExternalAppRejected, level: .warning, fields: fields)
+                diagnostics.record(
+                    RememBarDiagnosticEvent.resultOpenExternalAppRejected,
+                    level: .warning,
+                    fields: fields
+                )
                 return
             }
             diagnostics.record(RememBarDiagnosticEvent.resultOpenExternalApp, fields: result.diagnosticFields)

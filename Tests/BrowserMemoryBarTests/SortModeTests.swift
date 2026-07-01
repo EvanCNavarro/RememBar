@@ -6,13 +6,13 @@ import Testing
     /// Three file results in rank order a, b, c with modification dates b > a > c.
     private struct DatedProvider: MemorySearching {
         func searchResponse(query: String, refinements: [String], limit: Int) async -> MemorySearchResponse {
-            let a = MemoryResult(fileURL: URL(fileURLWithPath: "/x/a.txt"), displayPath: "a.txt",
-                                 modifiedAt: Date(timeIntervalSince1970: 2_000), rank: 100)
-            let b = MemoryResult(fileURL: URL(fileURLWithPath: "/x/b.txt"), displayPath: "b.txt",
-                                 modifiedAt: Date(timeIntervalSince1970: 3_000), rank: 90)
-            let c = MemoryResult(fileURL: URL(fileURLWithPath: "/x/c.txt"), displayPath: "c.txt",
-                                 modifiedAt: Date(timeIntervalSince1970: 1_000), rank: 80)
-            return MemorySearchResponse(results: [a, b, c])
+            let resultA = MemoryResult(fileURL: URL(fileURLWithPath: "/x/a.txt"), displayPath: "a.txt",
+                                       modifiedAt: Date(timeIntervalSince1970: 2_000), rank: 100)
+            let resultB = MemoryResult(fileURL: URL(fileURLWithPath: "/x/b.txt"), displayPath: "b.txt",
+                                       modifiedAt: Date(timeIntervalSince1970: 3_000), rank: 90)
+            let resultC = MemoryResult(fileURL: URL(fileURLWithPath: "/x/c.txt"), displayPath: "c.txt",
+                                       modifiedAt: Date(timeIntervalSince1970: 1_000), rank: 80)
+            return MemorySearchResponse(results: [resultA, resultB, resultC])
         }
     }
 

@@ -28,7 +28,9 @@ struct RememBarPathsTests {
         for id in RememBarPaths.bundleIDs {
             expected.insert(library.appendingPathComponent("Preferences/\(id).plist").path)
             expected.insert(library.appendingPathComponent("Caches/\(id)", isDirectory: true).path)
-            expected.insert(library.appendingPathComponent("Saved Application State/\(id).savedState", isDirectory: true).path)
+            expected.insert(
+                library.appendingPathComponent("Saved Application State/\(id).savedState", isDirectory: true).path
+            )
         }
         #expect(Set(sut.dataPaths.map(\.path)) == expected)
     }

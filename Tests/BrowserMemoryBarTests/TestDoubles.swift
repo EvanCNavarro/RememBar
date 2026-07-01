@@ -1,5 +1,5 @@
-@testable import BrowserMemoryBar
 import AppKit
+@testable import BrowserMemoryBar
 import Foundation
 import SQLite3
 import Testing

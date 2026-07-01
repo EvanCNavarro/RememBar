@@ -26,7 +26,9 @@ struct ScriptWorkflowTests {
 
         #expect(script.contains("--show-bin-path"))
         #expect(script.contains("swift build --package-path \"$PROJECT_DIR\" --configuration \"$CONFIGURATION\""))
-        #expect(script.contains("swift build --package-path \"$PROJECT_DIR\" --configuration \"$CONFIGURATION\" --show-bin-path"))
+        let showBinPath = "swift build --package-path \"$PROJECT_DIR\" "
+            + "--configuration \"$CONFIGURATION\" --show-bin-path"
+        #expect(script.contains(showBinPath))
         #expect(!matches(script, pattern: #"\.build/[A-Za-z0-9_]+-apple-macosx"#))
         #expect(!script.contains("menu-bar-prototype"))
         #expect(script.contains("REMEMBAR_ICON_SOURCE"))

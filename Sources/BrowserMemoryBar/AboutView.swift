@@ -11,10 +11,10 @@ struct AboutControl: View {
     @State private var showAbout = false
 
     var body: some View {
-        IconControlButton(size: Tokens.control, radius: Tokens.radius, action: { showAbout.toggle() }) {
+        IconControlButton(size: Tokens.control, radius: Tokens.radius, action: { showAbout.toggle() }, content: {
             Image(systemName: "questionmark")
                 .font(.system(size: 14, weight: .semibold))
-        }
+        })
         .accessibilityLabel("About RememBar")
         .popover(isPresented: $showAbout, arrowEdge: .bottom) {
             AboutPopover(onCheckForUpdates: onCheckForUpdates, onUninstall: onUninstall)
@@ -196,10 +196,11 @@ private struct EllipsisButton: View {
     @Binding var isOn: Bool
 
     var body: some View {
-        IconControlButton(size: Tokens.control, radius: Tokens.radius, active: isOn, action: { isOn.toggle() }) {
-            Image(systemName: "ellipsis")
-                .font(.system(size: 14, weight: .semibold))
-        }
+        IconControlButton(
+            size: Tokens.control, radius: Tokens.radius, active: isOn, action: { isOn.toggle() }, content: {
+                Image(systemName: "ellipsis")
+                    .font(.system(size: 14, weight: .semibold))
+            })
         .accessibilityLabel("More actions")
     }
 }
@@ -310,29 +311,32 @@ private struct RobotGlyph: View {
 
     var body: some View {
         Canvas { context, size in
-            let s = size.width
-            func pt(_ x: CGFloat, _ y: CGFloat) -> CGPoint { CGPoint(x: x * s, y: y * s) }
-            let line = s * 0.09
+            let side = size.width
+            func pt(_ px: CGFloat, _ py: CGFloat) -> CGPoint { CGPoint(x: px * side, y: py * side) }
+            let line = side * 0.09
 
             // Antenna: a stem with a ball on top.
             var stem = Path()
             stem.move(to: pt(0.5, 0.14))
             stem.addLine(to: pt(0.5, 0.30))
             context.stroke(stem, with: .color(color), lineWidth: line)
-            let ball = s * 0.085
-            context.fill(Path(ellipseIn: CGRect(x: 0.5 * s - ball, y: 0.06 * s, width: ball * 2, height: ball * 2)),
-                         with: .color(color))
+            let ball = side * 0.085
+            context.fill(
+                Path(ellipseIn: CGRect(x: 0.5 * side - ball, y: 0.06 * side, width: ball * 2, height: ball * 2)),
+                with: .color(color))
 
             // Head.
-            let head = Path(roundedRect: CGRect(x: 0.16 * s, y: 0.30 * s, width: 0.68 * s, height: 0.60 * s),
-                            cornerRadius: 0.18 * s)
+            let head = Path(
+                roundedRect: CGRect(x: 0.16 * side, y: 0.30 * side, width: 0.68 * side, height: 0.60 * side),
+                cornerRadius: 0.18 * side)
             context.stroke(head, with: .color(color), lineWidth: line)
 
             // Eyes.
-            let eye = s * 0.08
+            let eye = side * 0.08
             for cx in [0.37, 0.63] {
-                context.fill(Path(ellipseIn: CGRect(x: cx * s - eye, y: 0.58 * s - eye, width: eye * 2, height: eye * 2)),
-                             with: .color(color))
+                context.fill(
+                    Path(ellipseIn: CGRect(x: cx * side - eye, y: 0.58 * side - eye, width: eye * 2, height: eye * 2)),
+                    with: .color(color))
             }
         }
     }

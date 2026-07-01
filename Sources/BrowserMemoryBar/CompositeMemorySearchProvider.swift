@@ -28,26 +28,14 @@ struct CompositeMemorySearchProvider: MemorySearching, Sendable {
         )
         let response = await withTaskGroup(of: ProviderSearchOutput.self) { group in
             for (index, provider) in providers.enumerated() {
-                let providerName = String(describing: type(of: provider))
-                let diagnostics = diagnostics
                 group.addTask {
-                    let providerStartedAt = Date()
-                    diagnostics.record(
-                        RememBarDiagnosticEvent.compositeProviderStarted,
-                        fields: ["provider": providerName, "query": query]
+                    await self.runProvider(
+                        provider,
+                        index: index,
+                        query: query,
+                        refinements: refinements,
+                        limit: limit
                     )
-                    let response = await provider.searchResponse(query: query, refinements: refinements, limit: limit)
-                    diagnostics.record(
-                        RememBarDiagnosticEvent.compositeProviderFinished,
-                        fields: [
-                            "provider": providerName,
-                            "query": query,
-                            "resultCount": "\(response.results.count)",
-                            "sourceStatusCount": "\(response.sourceStatuses.count)",
-                            "durationMs": "\(Int(Date().timeIntervalSince(providerStartedAt) * 1000))"
-                        ]
-                    )
-                    return ProviderSearchOutput(index: index, response: response)
                 }
             }
 
@@ -74,6 +62,33 @@ struct CompositeMemorySearchProvider: MemorySearching, Sendable {
             ]
         )
         return response
+    }
+
+    private func runProvider(
+        _ provider: any MemorySearching,
+        index: Int,
+        query: String,
+        refinements: [String],
+        limit: Int
+    ) async -> ProviderSearchOutput {
+        let providerName = String(describing: type(of: provider))
+        let providerStartedAt = Date()
+        diagnostics.record(
+            RememBarDiagnosticEvent.compositeProviderStarted,
+            fields: ["provider": providerName, "query": query]
+        )
+        let response = await provider.searchResponse(query: query, refinements: refinements, limit: limit)
+        diagnostics.record(
+            RememBarDiagnosticEvent.compositeProviderFinished,
+            fields: [
+                "provider": providerName,
+                "query": query,
+                "resultCount": "\(response.results.count)",
+                "sourceStatusCount": "\(response.sourceStatuses.count)",
+                "durationMs": "\(Int(Date().timeIntervalSince(providerStartedAt) * 1000))"
+            ]
+        )
+        return ProviderSearchOutput(index: index, response: response)
     }
 }
 

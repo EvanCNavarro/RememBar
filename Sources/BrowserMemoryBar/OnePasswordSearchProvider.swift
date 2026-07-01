@@ -53,7 +53,9 @@ struct OnePasswordSearchProvider: MemorySearching, Sendable {
                 level: .error,
                 fields: ["errorType": String(reflecting: type(of: error))]
             )
-            return MemorySearchResponse(sourceStatuses: [Self.status(state: .failed, detail: "Could not read item metadata")])
+            return MemorySearchResponse(
+                sourceStatuses: [Self.status(state: .failed, detail: "Could not read item metadata")]
+            )
         }
     }
 

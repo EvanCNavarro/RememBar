@@ -1,8 +1,16 @@
-@testable import BrowserMemoryBar
 import AppKit
+@testable import BrowserMemoryBar
 import Foundation
 import SQLite3
 import Testing
+
+// swiftlint:disable file_length
+// This suite intentionally colocates diagnostics, crash-scanner, and menu-bar-placement tests;
+// splitting is out of scope, so the file/type body exceed the default budgets.
+// swiftlint:disable type_body_length line_length
+// line_length: the crash-report string-literal fixtures (symbolicated stack frames, packed IPS JSON
+// lines) must stay byte-exact for the parser under test, so the two >120-char lines inside those
+// literals cannot be reflowed. The paired `enable` at end-of-file keeps these scoped, not blanket.
 
 @Suite("Diagnostics")
 struct DiagnosticsTests {
@@ -652,3 +660,4 @@ struct DiagnosticsTests {
         #expect(directory == override)
     }
 }
+// swiftlint:enable type_body_length line_length

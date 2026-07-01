@@ -27,7 +27,8 @@ struct RememBarPaths {
     /// The live authority: real `~/Library`, and the bundle this code is running inside.
     static var current: RememBarPaths {
         RememBarPaths(
-            library: FileManager.default.homeDirectoryForCurrentUser.appendingPathComponent("Library", isDirectory: true),
+            library: FileManager.default.homeDirectoryForCurrentUser
+                .appendingPathComponent("Library", isDirectory: true),
             bundleURL: Bundle.main.bundleURL
         )
     }

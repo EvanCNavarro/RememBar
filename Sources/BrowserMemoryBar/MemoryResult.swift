@@ -367,17 +367,57 @@ struct BrowserRef: Equatable, Sendable {
     let bundlePathHint: String?
 
     static let chrome = BrowserRef(displayName: "Chrome", bundleIdentifier: "com.google.Chrome", bundlePathHint: nil)
-    static let chromeForTesting = BrowserRef(displayName: "Chrome for Testing", bundleIdentifier: "com.google.chrome.for.testing", bundlePathHint: "/Applications/Google Chrome for Testing.app")
+    static let chromeForTesting = BrowserRef(
+        displayName: "Chrome for Testing",
+        bundleIdentifier: "com.google.chrome.for.testing",
+        bundlePathHint: "/Applications/Google Chrome for Testing.app"
+    )
     static let safari = BrowserRef(displayName: "Safari", bundleIdentifier: "com.apple.Safari", bundlePathHint: nil)
-    static let arc = BrowserRef(displayName: "Arc", bundleIdentifier: "company.thebrowser.Browser", bundlePathHint: "/Applications/Arc.app")
-    static let brave = BrowserRef(displayName: "Brave", bundleIdentifier: "com.brave.Browser", bundlePathHint: "/Applications/Brave Browser.app")
-    static let chromium = BrowserRef(displayName: "Chromium", bundleIdentifier: "org.chromium.Chromium", bundlePathHint: "/Applications/Chromium.app")
-    static let edge = BrowserRef(displayName: "Microsoft Edge", bundleIdentifier: "com.microsoft.edgemac", bundlePathHint: "/Applications/Microsoft Edge.app")
-    static let firefox = BrowserRef(displayName: "Firefox", bundleIdentifier: "org.mozilla.firefox", bundlePathHint: "/Applications/Firefox.app")
-    static let libreWolf = BrowserRef(displayName: "LibreWolf", bundleIdentifier: nil, bundlePathHint: "/Applications/LibreWolf.app")
-    static let opera = BrowserRef(displayName: "Opera", bundleIdentifier: "com.operasoftware.Opera", bundlePathHint: "/Applications/Opera.app")
-    static let vivaldi = BrowserRef(displayName: "Vivaldi", bundleIdentifier: "com.vivaldi.Vivaldi", bundlePathHint: "/Applications/Vivaldi.app")
-    static let waterfox = BrowserRef(displayName: "Waterfox", bundleIdentifier: nil, bundlePathHint: "/Applications/Waterfox.app")
+    static let arc = BrowserRef(
+        displayName: "Arc",
+        bundleIdentifier: "company.thebrowser.Browser",
+        bundlePathHint: "/Applications/Arc.app"
+    )
+    static let brave = BrowserRef(
+        displayName: "Brave",
+        bundleIdentifier: "com.brave.Browser",
+        bundlePathHint: "/Applications/Brave Browser.app"
+    )
+    static let chromium = BrowserRef(
+        displayName: "Chromium",
+        bundleIdentifier: "org.chromium.Chromium",
+        bundlePathHint: "/Applications/Chromium.app"
+    )
+    static let edge = BrowserRef(
+        displayName: "Microsoft Edge",
+        bundleIdentifier: "com.microsoft.edgemac",
+        bundlePathHint: "/Applications/Microsoft Edge.app"
+    )
+    static let firefox = BrowserRef(
+        displayName: "Firefox",
+        bundleIdentifier: "org.mozilla.firefox",
+        bundlePathHint: "/Applications/Firefox.app"
+    )
+    static let libreWolf = BrowserRef(
+        displayName: "LibreWolf",
+        bundleIdentifier: nil,
+        bundlePathHint: "/Applications/LibreWolf.app"
+    )
+    static let opera = BrowserRef(
+        displayName: "Opera",
+        bundleIdentifier: "com.operasoftware.Opera",
+        bundlePathHint: "/Applications/Opera.app"
+    )
+    static let vivaldi = BrowserRef(
+        displayName: "Vivaldi",
+        bundleIdentifier: "com.vivaldi.Vivaldi",
+        bundlePathHint: "/Applications/Vivaldi.app"
+    )
+    static let waterfox = BrowserRef(
+        displayName: "Waterfox",
+        bundleIdentifier: nil,
+        bundlePathHint: "/Applications/Waterfox.app"
+    )
     static let zen = BrowserRef(
         displayName: "Zen",
         bundleIdentifier: "app.zen-browser.zen",

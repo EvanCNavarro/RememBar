@@ -1,5 +1,10 @@
 import Foundation
 
+// swiftlint:disable file_length
+// This file holds the diagnostics logger plus its private Codable/error companions and the extracted
+// `DiagnosticLogRetention` helper (split out to keep the class body under type_body_length). Together
+// they push the file just past the 500-line budget; splitting the file is out of scope here.
+
 struct PreviousDiagnosticSession: Equatable, Sendable {
     let sessionID: String
     let startedAt: String
@@ -87,52 +92,7 @@ final class RememBarDiagnostics: @unchecked Sendable {
             }
 
             if let previous {
-                appendEventLocked(
-                    name: RememBarDiagnosticEvent.diagnosticsPreviousSessionUnclean,
-                    level: .warning,
-                    fields: [
-                        "previousSessionID": previous.sessionID,
-                        "startedAt": previous.startedAt,
-                        "lastEventName": previous.lastEventName ?? "",
-                        "lastSequence": "\(previous.lastSequence)",
-                        "processID": "\(previous.processID)"
-                    ],
-                    file: "RememBarDiagnostics",
-                    function: "startSession",
-                    line: 0
-                )
-                let reports = crashReportScanner.reports(
-                    since: Self.date(from: previous.startedAt),
-                    processID: previous.processID
-                )
-                if let report = reports.first {
-                    var fields = report.diagnosticFields
-                    fields["previousSessionID"] = previous.sessionID
-                    fields["lastEventName"] = previous.lastEventName ?? ""
-                    fields["lastSequence"] = "\(previous.lastSequence)"
-                    appendEventLocked(
-                        name: RememBarDiagnosticEvent.diagnosticsCrashReportFound,
-                        level: .error,
-                        fields: fields,
-                        file: "RememBarDiagnostics",
-                        function: "startSession",
-                        line: 0
-                    )
-                } else {
-                    appendEventLocked(
-                        name: RememBarDiagnosticEvent.diagnosticsCrashReportMissing,
-                        level: .warning,
-                        fields: [
-                            "previousSessionID": previous.sessionID,
-                            "lastEventName": previous.lastEventName ?? "",
-                            "lastSequence": "\(previous.lastSequence)",
-                            "startedAt": previous.startedAt
-                        ],
-                        file: "RememBarDiagnostics",
-                        function: "startSession",
-                        line: 0
-                    )
-                }
+                recordPreviousSessionCorrelation(previous, crashReportScanner: crashReportScanner)
             }
 
             var fields = [
@@ -152,6 +112,61 @@ final class RememBarDiagnostics: @unchecked Sendable {
             )
 
             return previous
+        }
+    }
+
+    /// Emits the previous-unclean-session breadcrumb, then either the matching crash report or a
+    /// missing-report warning. The caller must already hold `lock` (this uses `appendEventLocked`),
+    /// exactly as when this block was inline in `startSession`.
+    private func recordPreviousSessionCorrelation(
+        _ previous: PreviousDiagnosticSession,
+        crashReportScanner: any RememBarCrashReportScanning
+    ) {
+        appendEventLocked(
+            name: RememBarDiagnosticEvent.diagnosticsPreviousSessionUnclean,
+            level: .warning,
+            fields: [
+                "previousSessionID": previous.sessionID,
+                "startedAt": previous.startedAt,
+                "lastEventName": previous.lastEventName ?? "",
+                "lastSequence": "\(previous.lastSequence)",
+                "processID": "\(previous.processID)"
+            ],
+            file: "RememBarDiagnostics",
+            function: "startSession",
+            line: 0
+        )
+        let reports = crashReportScanner.reports(
+            since: Self.date(from: previous.startedAt),
+            processID: previous.processID
+        )
+        if let report = reports.first {
+            var fields = report.diagnosticFields
+            fields["previousSessionID"] = previous.sessionID
+            fields["lastEventName"] = previous.lastEventName ?? ""
+            fields["lastSequence"] = "\(previous.lastSequence)"
+            appendEventLocked(
+                name: RememBarDiagnosticEvent.diagnosticsCrashReportFound,
+                level: .error,
+                fields: fields,
+                file: "RememBarDiagnostics",
+                function: "startSession",
+                line: 0
+            )
+        } else {
+            appendEventLocked(
+                name: RememBarDiagnosticEvent.diagnosticsCrashReportMissing,
+                level: .warning,
+                fields: [
+                    "previousSessionID": previous.sessionID,
+                    "lastEventName": previous.lastEventName ?? "",
+                    "lastSequence": "\(previous.lastSequence)",
+                    "startedAt": previous.startedAt
+                ],
+                file: "RememBarDiagnostics",
+                function: "startSession",
+                line: 0
+            )
         }
     }
 
@@ -217,6 +232,9 @@ final class RememBarDiagnostics: @unchecked Sendable {
         }
     }
 
+    // Internal logging funnel: the trailing file/function/line carry #fileID/#function/#line
+    // call-site metadata and are inseparable from name/level/fields.
+    // swiftlint:disable:next function_parameter_count
     private func recordSynchronously(
         _ name: String,
         level: Level,
@@ -262,6 +280,9 @@ final class RememBarDiagnostics: @unchecked Sendable {
         return scrubbed
     }
 
+    // Internal logging funnel: the trailing file/function/line carry #fileID/#function/#line
+    // call-site metadata and are inseparable from name/level/fields.
+    // swiftlint:disable:next function_parameter_count
     private func appendEventLocked(
         name: String,
         level: Level,
@@ -289,7 +310,11 @@ final class RememBarDiagnostics: @unchecked Sendable {
             let data = try Self.makeEncoder().encode(event)
             try appendLine(data)
             sequence = nextSequence
-            try enforceRetention()
+            try DiagnosticLogRetention.enforce(
+                logURL: logURL,
+                maxLogBytes: maxLogBytes,
+                fileManager: fileManager
+            )
             writeState(
                 cleanExit: false,
                 lastEventName: name,
@@ -312,42 +337,6 @@ final class RememBarDiagnostics: @unchecked Sendable {
         try handle.seekToEnd()
         try handle.write(contentsOf: data)
         try handle.write(contentsOf: Data("\n".utf8))
-    }
-
-    private func enforceRetention() throws {
-        guard maxLogBytes > 0,
-              fileManager.fileExists(atPath: logURL.path) else {
-            return
-        }
-        // O(1) size probe first: a single search fires ~15-20 events, and re-reading the whole log
-        // (up to maxLogBytes) on each one just to find it's under the cap is wasteful. Only read +
-        // rewrite when actually over.
-        let fileSize = ((try? fileManager.attributesOfItem(atPath: logURL.path))?[.size] as? NSNumber)?.intValue ?? 0
-        guard fileSize > maxLogBytes else { return }
-        let data = try Data(contentsOf: logURL)
-        guard data.count > maxLogBytes else { return }
-        guard let text = String(data: data, encoding: .utf8) else { return }
-
-        var kept: [String] = []
-        var keptBytes = 0
-        for line in text.split(separator: "\n", omittingEmptySubsequences: false).reversed() {
-            guard !line.isEmpty else { continue }
-            let lineText = String(line)
-            let lineBytes = lineText.utf8.count + 1
-            if kept.isEmpty {
-                kept.append(lineText)
-                keptBytes += lineBytes
-                continue
-            }
-            if keptBytes + lineBytes > maxLogBytes {
-                break
-            }
-            kept.append(lineText)
-            keptBytes += lineBytes
-        }
-
-        let retained = kept.reversed().joined(separator: "\n")
-        try (retained + (retained.isEmpty ? "" : "\n")).write(to: logURL, atomically: true, encoding: .utf8)
     }
 
     private func writeFallbackLine(for event: DiagnosticEvent, error: Error) {
@@ -426,7 +415,10 @@ final class RememBarDiagnostics: @unchecked Sendable {
             return URL(fileURLWithPath: override, isDirectory: true)
         }
 
-        let library = fileManager.urls(for: .applicationSupportDirectory, in: .userDomainMask).first?.deletingLastPathComponent()
+        let library = fileManager
+            .urls(for: .applicationSupportDirectory, in: .userDomainMask)
+            .first?
+            .deletingLastPathComponent()
             ?? fileManager.homeDirectoryForCurrentUser.appendingPathComponent("Library", isDirectory: true)
         return RememBarPaths(library: library, bundleURL: nil).diagnosticsDirectory
     }
@@ -493,5 +485,46 @@ private enum DiagnosticWriteError: Error, CustomStringConvertible {
         case .createFailed(let path):
             return "Failed to create diagnostics log at \(path)"
         }
+    }
+}
+
+/// Size-caps the diagnostics log by dropping the oldest lines. Extracted from `RememBarDiagnostics`
+/// as a pure, stateless operation over (logURL, maxLogBytes, fileManager); behavior is identical to
+/// the former `enforceRetention` instance method and it is still invoked under the diagnostics lock.
+private enum DiagnosticLogRetention {
+    static func enforce(logURL: URL, maxLogBytes: Int, fileManager: FileManager) throws {
+        guard maxLogBytes > 0,
+              fileManager.fileExists(atPath: logURL.path) else {
+            return
+        }
+        // O(1) size probe first: a single search fires ~15-20 events, and re-reading the whole log
+        // (up to maxLogBytes) on each one just to find it's under the cap is wasteful. Only read +
+        // rewrite when actually over.
+        let fileSize = ((try? fileManager.attributesOfItem(atPath: logURL.path))?[.size] as? NSNumber)?.intValue ?? 0
+        guard fileSize > maxLogBytes else { return }
+        let data = try Data(contentsOf: logURL)
+        guard data.count > maxLogBytes else { return }
+        guard let text = String(data: data, encoding: .utf8) else { return }
+
+        var kept: [String] = []
+        var keptBytes = 0
+        for line in text.split(separator: "\n", omittingEmptySubsequences: false).reversed() {
+            guard !line.isEmpty else { continue }
+            let lineText = String(line)
+            let lineBytes = lineText.utf8.count + 1
+            if kept.isEmpty {
+                kept.append(lineText)
+                keptBytes += lineBytes
+                continue
+            }
+            if keptBytes + lineBytes > maxLogBytes {
+                break
+            }
+            kept.append(lineText)
+            keptBytes += lineBytes
+        }
+
+        let retained = kept.reversed().joined(separator: "\n")
+        try (retained + (retained.isEmpty ? "" : "\n")).write(to: logURL, atomically: true, encoding: .utf8)
     }
 }

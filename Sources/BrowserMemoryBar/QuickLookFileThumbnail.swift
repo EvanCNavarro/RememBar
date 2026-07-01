@@ -71,8 +71,11 @@ struct QuickLookFileThumbnail<Placeholder: View>: View {
         if let errorDescription = response.errorDescription {
             fields["error"] = errorDescription
         }
+        let event = response.image == nil
+            ? RememBarDiagnosticEvent.thumbnailQuickLookFailed
+            : RememBarDiagnosticEvent.thumbnailQuickLookFinished
         RememBarDiagnostics.shared.recordAsync(
-            response.image == nil ? RememBarDiagnosticEvent.thumbnailQuickLookFailed : RememBarDiagnosticEvent.thumbnailQuickLookFinished,
+            event,
             level: response.image == nil ? .warning : .info,
             fields: fields
         )
@@ -151,7 +154,10 @@ final class QuickLookThumbnailState: @unchecked Sendable {
         let result = lock.withLock {
             let shouldApply = !cancelled && started
             guard !finished else {
-                return (shouldApply: false, continuation: nil as CheckedContinuation<QuickLookThumbnailResponse?, Never>?)
+                return (
+                    shouldApply: false,
+                    continuation: nil as CheckedContinuation<QuickLookThumbnailResponse?, Never>?
+                )
             }
 
             finished = true

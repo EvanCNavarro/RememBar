@@ -83,7 +83,8 @@ struct RememBarCrashReportScanner: RememBarCrashReportScanning {
             }
 
             guard let since else { return true }
-            let modifiedAt = (try? url.resourceValues(forKeys: [.contentModificationDateKey]).contentModificationDate) ?? .distantPast
+            let modifiedAt = (try? url.resourceValues(forKeys: [.contentModificationDateKey])
+                .contentModificationDate) ?? .distantPast
             return modifiedAt >= since
         }
     }
@@ -110,7 +111,10 @@ struct RememBarCrashReportScanner: RememBarCrashReportScanning {
 
         let metadata = objects.first ?? [:]
         let report = objects.last ?? metadata
-        guard let processName = stringValue(in: [report, metadata], keys: ["procName", "processName", "app_name", "name"])
+        guard let processName = stringValue(
+            in: [report, metadata],
+            keys: ["procName", "processName", "app_name", "name"]
+        )
             ?? processNameFromFilename(url) else {
             return nil
         }
@@ -120,7 +124,10 @@ struct RememBarCrashReportScanner: RememBarCrashReportScanning {
             url: url,
             processName: processName,
             processID: int32Value(in: report, keys: ["pid", "processID"]),
-            incidentIdentifier: stringValue(in: [report, metadata], keys: ["incident", "incidentIdentifier", "incident_id"]),
+            incidentIdentifier: stringValue(
+                in: [report, metadata],
+                keys: ["incident", "incidentIdentifier", "incident_id"]
+            ),
             identifier: stringValue(in: [report, metadata], keys: ["bundleID", "bundleIdentifier", "identifier"]),
             dateTime: stringValue(in: [report, metadata], keys: ["captureTime", "dateTime", "timestamp"]),
             exceptionType: exceptionDescription(in: report),

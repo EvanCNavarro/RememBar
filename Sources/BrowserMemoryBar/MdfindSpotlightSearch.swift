@@ -42,58 +42,7 @@ struct MdfindSpotlightSearch: SpotlightSearching, Sendable {
     }
 
     private func run(query: String, root: URL, state: RunningProcessState) throws -> [URL] {
-        let result: ProcessRunResult
-        do {
-            result = try ProcessRunner.run(
-                executableURL: executableURL,
-                arguments: ["-onlyin", root.path, query],
-                timeout: timeout,
-                state: state,
-                separateStderr: false, // mdfind merges stderr into stdout
-                onWillLaunch: {
-                    diagnostics.record(RememBarDiagnosticEvent.mdfindProcessLaunch, fields: processFields(query: query, root: root))
-                },
-                onLaunched: { pid in
-                    diagnostics.record(
-                        RememBarDiagnosticEvent.mdfindProcessLaunched,
-                        fields: processFields(query: query, root: root, processID: pid)
-                    )
-                },
-                onCancelRequestedAfterLaunch: { pid in
-                    diagnostics.record(
-                        RememBarDiagnosticEvent.mdfindProcessCancelRequestedAfterLaunch,
-                        level: .warning,
-                        fields: processFields(query: query, root: root, processID: pid)
-                    )
-                }
-            )
-        } catch ProcessRunError.cancelledBeforeLaunch {
-            diagnostics.record(
-                RememBarDiagnosticEvent.mdfindProcessCancelledBeforeLaunch,
-                level: .warning,
-                fields: processFields(query: query, root: root)
-            )
-            throw CancellationError()
-        } catch let ProcessRunError.launchFailed(error) {
-            var fields = processFields(query: query, root: root)
-            fields["error"] = String(describing: error)
-            diagnostics.record(RememBarDiagnosticEvent.mdfindProcessLaunchFailed, level: .error, fields: fields)
-            throw error
-        } catch let ProcessRunError.timedOut(pid) {
-            diagnostics.record(
-                RememBarDiagnosticEvent.mdfindProcessTimeout,
-                level: .error,
-                fields: processFields(query: query, root: root, processID: pid)
-            )
-            throw SpotlightSearchError.timedOut
-        } catch let ProcessRunError.cancelledAfterLaunch(pid) {
-            diagnostics.record(
-                RememBarDiagnosticEvent.mdfindProcessCancelled,
-                level: .warning,
-                fields: processFields(query: query, root: root, processID: pid)
-            )
-            throw CancellationError()
-        }
+        let result = try launch(query: query, root: root, state: state)
 
         let text = String(data: result.stdout, encoding: .utf8) ?? ""
         if result.terminationStatus != 0 {
@@ -112,6 +61,72 @@ struct MdfindSpotlightSearch: SpotlightSearching, Sendable {
         fields["resultCount"] = "\(urls.count)"
         diagnostics.record(RememBarDiagnosticEvent.mdfindProcessFinished, fields: fields)
         return urls
+    }
+
+    private func launch(query: String, root: URL, state: RunningProcessState) throws -> ProcessRunResult {
+        do {
+            return try ProcessRunner.run(
+                executableURL: executableURL,
+                arguments: ["-onlyin", root.path, query],
+                timeout: timeout,
+                state: state,
+                separateStderr: false, // mdfind merges stderr into stdout
+                onWillLaunch: {
+                    diagnostics.record(
+                        RememBarDiagnosticEvent.mdfindProcessLaunch,
+                        fields: processFields(query: query, root: root)
+                    )
+                },
+                onLaunched: { pid in
+                    diagnostics.record(
+                        RememBarDiagnosticEvent.mdfindProcessLaunched,
+                        fields: processFields(query: query, root: root, processID: pid)
+                    )
+                },
+                onCancelRequestedAfterLaunch: { pid in
+                    diagnostics.record(
+                        RememBarDiagnosticEvent.mdfindProcessCancelRequestedAfterLaunch,
+                        level: .warning,
+                        fields: processFields(query: query, root: root, processID: pid)
+                    )
+                }
+            )
+        } catch {
+            throw mapLaunchError(error, query: query, root: root)
+        }
+    }
+
+    private func mapLaunchError(_ error: Error, query: String, root: URL) -> Error {
+        switch error {
+        case ProcessRunError.cancelledBeforeLaunch:
+            diagnostics.record(
+                RememBarDiagnosticEvent.mdfindProcessCancelledBeforeLaunch,
+                level: .warning,
+                fields: processFields(query: query, root: root)
+            )
+            return CancellationError()
+        case let ProcessRunError.launchFailed(launchError):
+            var fields = processFields(query: query, root: root)
+            fields["error"] = String(describing: launchError)
+            diagnostics.record(RememBarDiagnosticEvent.mdfindProcessLaunchFailed, level: .error, fields: fields)
+            return launchError
+        case let ProcessRunError.timedOut(pid):
+            diagnostics.record(
+                RememBarDiagnosticEvent.mdfindProcessTimeout,
+                level: .error,
+                fields: processFields(query: query, root: root, processID: pid)
+            )
+            return SpotlightSearchError.timedOut
+        case let ProcessRunError.cancelledAfterLaunch(pid):
+            diagnostics.record(
+                RememBarDiagnosticEvent.mdfindProcessCancelled,
+                level: .warning,
+                fields: processFields(query: query, root: root, processID: pid)
+            )
+            return CancellationError()
+        default:
+            return error
+        }
     }
 
     private func processFields(query: String, root: URL, processID: Int32? = nil) -> [String: String] {

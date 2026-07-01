@@ -64,10 +64,11 @@ private struct CommandField: View {
                 .accessibilityLabel("Search files and browser history")
 
             if store.canClearSearch {
-                IconControlButton(action: { withAnimation(.easeInOut(duration: 0.2)) { store.clearSearch() } }) {
-                    Image(systemName: "xmark")
-                        .font(.system(size: 10, weight: .bold))
-                }
+                IconControlButton(
+                    action: { withAnimation(.easeInOut(duration: 0.2)) { store.clearSearch() } }, content: {
+                        Image(systemName: "xmark")
+                            .font(.system(size: 10, weight: .bold))
+                    })
                 .accessibilityLabel("Clear search and start over")
             }
 

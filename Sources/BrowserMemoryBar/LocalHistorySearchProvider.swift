@@ -35,8 +35,14 @@ struct LocalHistorySearchProvider: MemorySearching, Sendable {
             ]
         )
         let report = readReport()
-        let results = HistoryRanker.searchRanked(rows: report.rows, query: query, refinements: refinements, limit: limit, aliases: aliases)
-            .map { MemoryResult(historyItem: $0.item, rank: $0.score) }
+        let results = HistoryRanker.searchRanked(
+            rows: report.rows,
+            query: query,
+            refinements: refinements,
+            limit: limit,
+            aliases: aliases
+        )
+        .map { MemoryResult(historyItem: $0.item, rank: $0.score) }
         let sourceStatuses = report.sourceStatuses
         diagnostics.record(
             RememBarDiagnosticEvent.historyProviderFinished,
@@ -71,41 +77,43 @@ struct LocalHistorySearchProvider: MemorySearching, Sendable {
                 "issueCount": "\(discoveryReport.issues.count)"
             ]
         )
-        let sourceReads = discoveryReport.sources.map { source in
-            let sourceFields = [
-                "browser": source.browser.displayName,
-                "profile": source.profile,
-                "family": source.family.rawValue,
-                "path": source.url.path
-            ]
-            diagnostics.record(RememBarDiagnosticEvent.historySourceReadStarted, fields: sourceFields)
-            do {
-                let rows = try HistoryDatabaseReader(source: source, since: since).readRows()
-                var fields = sourceFields
-                fields["rowCount"] = "\(rows.count)"
-                diagnostics.record(
-                    RememBarDiagnosticEvent.historySourceReadFinished,
-                    fields: fields
-                )
-                return HistorySourceRead(
-                    source: source,
-                    result: .success(rows)
-                )
-            } catch {
-                var fields = sourceFields
-                fields["error"] = HistoryReadReport.describe(error)
-                diagnostics.record(
-                    RememBarDiagnosticEvent.historySourceReadFailed,
-                    level: .error,
-                    fields: fields
-                )
-                return HistorySourceRead(
-                    source: source,
-                    result: .failure(HistoryReadReport.describe(error))
-                )
-            }
-        }
+        let sourceReads = discoveryReport.sources.map { readSource($0, since: since) }
         return HistoryReadReport(sourceReads: sourceReads, discoveryIssues: discoveryReport.issues)
+    }
+
+    private func readSource(_ source: HistorySource, since: Date?) -> HistorySourceRead {
+        let sourceFields = [
+            "browser": source.browser.displayName,
+            "profile": source.profile,
+            "family": source.family.rawValue,
+            "path": source.url.path
+        ]
+        diagnostics.record(RememBarDiagnosticEvent.historySourceReadStarted, fields: sourceFields)
+        do {
+            let rows = try HistoryDatabaseReader(source: source, since: since).readRows()
+            var fields = sourceFields
+            fields["rowCount"] = "\(rows.count)"
+            diagnostics.record(
+                RememBarDiagnosticEvent.historySourceReadFinished,
+                fields: fields
+            )
+            return HistorySourceRead(
+                source: source,
+                result: .success(rows)
+            )
+        } catch {
+            var fields = sourceFields
+            fields["error"] = HistoryReadReport.describe(error)
+            diagnostics.record(
+                RememBarDiagnosticEvent.historySourceReadFailed,
+                level: .error,
+                fields: fields
+            )
+            return HistorySourceRead(
+                source: source,
+                result: .failure(HistoryReadReport.describe(error))
+            )
+        }
     }
 }
 
@@ -423,10 +431,15 @@ private extension Array where Element == HistorySource {
 extension MemoryResult {
     init(historyItem: HistoryItem, rank: Int = 0) {
         let title = historyItem.title.isEmpty ? historyItem.url.absoluteString : historyItem.title
+        let visitedTimestamp = historyItem.visitedAt.timeIntervalSince1970
+        let id = "\(historyItem.sourcePath)|\(historyItem.url.absoluteString)|\(visitedTimestamp)"
+        let host = historyItem.url.host() ?? historyItem.url.absoluteString
+        let day = historyItem.visitedAt.formatted(.dateTime.month().day())
+        let detail = "\(historyItem.browser.displayName) · \(day) · \(host)"
         self.init(
-            id: "\(historyItem.sourcePath)|\(historyItem.url.absoluteString)|\(historyItem.visitedAt.timeIntervalSince1970)",
+            id: id,
             title: title,
-            detail: "\(historyItem.browser.displayName) · \(historyItem.visitedAt.formatted(.dateTime.month().day())) · \(historyItem.url.host() ?? historyItem.url.absoluteString)",
+            detail: detail,
             refinedDetail: nil,
             url: historyItem.url,
             thumbnailURL: historyItem.url.thumbnailURL,

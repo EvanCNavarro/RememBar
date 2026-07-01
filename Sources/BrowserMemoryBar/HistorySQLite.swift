@@ -16,41 +16,7 @@ struct HistoryDatabaseReader {
     }
 
     private func queryRows(_ database: SQLiteDatabase) throws -> [HistoryItem] {
-        let sql: String
-        let visitedAt: (SQLiteStatement) -> Date
-
-        switch source.family {
-        case .chromium:
-            let sinceClause = since.map { "WHERE v.visit_time >= \(HistoryDate.chromiumTimestamp($0))" } ?? ""
-            sql = """
-                SELECT v.visit_time, COALESCE(u.title, ''), u.url
-                FROM visits v JOIN urls u ON u.id = v.url
-                \(sinceClause)
-                ORDER BY v.visit_time DESC
-                LIMIT \(Self.rowLimit)
-                """
-            visitedAt = { HistoryDate.chromium($0.int64(at: 0)) }
-        case .firefox:
-            let sinceClause = since.map { "WHERE v.visit_date >= \(HistoryDate.firefoxTimestamp($0))" } ?? ""
-            sql = """
-                SELECT v.visit_date, COALESCE(p.title, ''), p.url
-                FROM moz_historyvisits v JOIN moz_places p ON p.id = v.place_id
-                \(sinceClause)
-                ORDER BY v.visit_date DESC
-                LIMIT \(Self.rowLimit)
-                """
-            visitedAt = { HistoryDate.firefox($0.int64(at: 0)) }
-        case .safari:
-            let sinceClause = since.map { "WHERE v.visit_time >= \(HistoryDate.safariTimestamp($0))" } ?? ""
-            sql = """
-                SELECT v.visit_time, COALESCE(v.title, ''), i.url
-                FROM history_visits v JOIN history_items i ON i.id = v.history_item
-                \(sinceClause)
-                ORDER BY v.visit_time DESC
-                LIMIT \(Self.rowLimit)
-                """
-            visitedAt = { HistoryDate.safari($0.double(at: 0)) }
-        }
+        let (sql, visitedAt) = queryPlan()
 
         return try database.query(sql) { statement in
             guard let url = URL(string: statement.text(at: 2)), WorkspaceBrowserOpener.canOpen(url) else {
@@ -68,6 +34,41 @@ struct HistoryDatabaseReader {
                 url: url,
                 sourcePath: source.url.path
             )
+        }
+    }
+
+    private func queryPlan() -> (sql: String, visitedAt: (SQLiteStatement) -> Date) {
+        switch source.family {
+        case .chromium:
+            let sinceClause = since.map { "WHERE v.visit_time >= \(HistoryDate.chromiumTimestamp($0))" } ?? ""
+            let sql = """
+                SELECT v.visit_time, COALESCE(u.title, ''), u.url
+                FROM visits v JOIN urls u ON u.id = v.url
+                \(sinceClause)
+                ORDER BY v.visit_time DESC
+                LIMIT \(Self.rowLimit)
+                """
+            return (sql, { HistoryDate.chromium($0.int64(at: 0)) })
+        case .firefox:
+            let sinceClause = since.map { "WHERE v.visit_date >= \(HistoryDate.firefoxTimestamp($0))" } ?? ""
+            let sql = """
+                SELECT v.visit_date, COALESCE(p.title, ''), p.url
+                FROM moz_historyvisits v JOIN moz_places p ON p.id = v.place_id
+                \(sinceClause)
+                ORDER BY v.visit_date DESC
+                LIMIT \(Self.rowLimit)
+                """
+            return (sql, { HistoryDate.firefox($0.int64(at: 0)) })
+        case .safari:
+            let sinceClause = since.map { "WHERE v.visit_time >= \(HistoryDate.safariTimestamp($0))" } ?? ""
+            let sql = """
+                SELECT v.visit_time, COALESCE(v.title, ''), i.url
+                FROM history_visits v JOIN history_items i ON i.id = v.history_item
+                \(sinceClause)
+                ORDER BY v.visit_time DESC
+                LIMIT \(Self.rowLimit)
+                """
+            return (sql, { HistoryDate.safari($0.double(at: 0)) })
         }
     }
 }

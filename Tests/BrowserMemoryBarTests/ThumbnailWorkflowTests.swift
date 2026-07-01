@@ -2,6 +2,10 @@
 import Foundation
 import Testing
 
+// Thumbnail fixture setup (building several MemoryResult / diagnostic-context inputs and asserting
+// each phase) is legitimately verbose; splitting it would obscure the workflow under test.
+// swiftlint:disable function_body_length
+
 @Suite("Thumbnail presentation")
 struct ThumbnailPresentationTests {
     @Test("thumbnail presentation distinguishes remote video icon file and fallback tiles")
@@ -214,6 +218,8 @@ struct RemoteThumbnailDiagnosticsTests {
         #expect(finalEvents[6].fields["host"] == "instant.example")
     }
 }
+
+// swiftlint:enable function_body_length
 
 #if canImport(AppKit) && canImport(QuickLookThumbnailing)
 @Suite("Thumbnail workflows")

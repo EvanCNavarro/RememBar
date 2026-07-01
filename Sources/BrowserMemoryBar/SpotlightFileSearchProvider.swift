@@ -27,21 +27,7 @@ struct SpotlightFileSearchProvider: MemorySearching, Sendable {
     func searchResponse(query: String, refinements: [String], limit: Int) async -> MemorySearchResponse {
         let plan = SpotlightFileQueryPlan(query: query, refinements: refinements, aliases: aliases)
         guard !plan.query.isEmpty else {
-            diagnostics.record(
-                RememBarDiagnosticEvent.spotlightProviderEmptyPlan,
-                fields: [
-                    "query": query,
-                    "refinementCount": "\(refinements.count)"
-                ]
-            )
-            return MemorySearchResponse(sourceStatuses: [
-                MemorySearchSourceStatus(
-                    id: "files",
-                    sourceName: "Files",
-                    state: .skipped,
-                    detail: "No file-search terms"
-                )
-            ])
+            return skippedResponse(query: query, refinements: refinements)
         }
 
         let startedAt = Date()
@@ -56,60 +42,17 @@ struct SpotlightFileSearchProvider: MemorySearching, Sendable {
             ]
         )
         let accessIssues = plan.hasExplicitFileIntent ? accessChecker.inaccessibleLocations(home: home) : []
-        if !accessIssues.isEmpty {
-            diagnostics.record(
-                RememBarDiagnosticEvent.fileSearchAccessDenied,
-                level: .warning,
-                fields: [
-                    "query": query,
-                    "locationNames": accessIssues.map(\.locationName).joined(separator: ","),
-                    "paths": accessIssues.map(\.path).joined(separator: ","),
-                    "reasons": accessIssues.map(\.reason).joined(separator: ",")
-                ]
-            )
-        }
+        recordAccessIssues(accessIssues, query: query)
         do {
             let urls = try await spotlight.search(query: plan.query, root: home)
-            let fileResults = FileResultRanker
-                .rank(urls: urls, plan: plan, home: home, now: now())
-                .prefix(limit)
-                .map {
-                    MemoryResult(
-                        fileURL: $0.url,
-                        displayPath: $0.displayPath,
-                        modifiedAt: $0.modifiedAt,
-                        rank: $0.score
-                    )
-                }
-            let results = Self.results(
-                fileResults: fileResults,
-                limit: limit
+            return makeResponse(
+                urls: urls,
+                plan: plan,
+                limit: limit,
+                accessIssues: accessIssues,
+                logging: (query: query, startedAt: startedAt)
             )
-            let sourceStatuses = Self.sourceStatuses(
-                candidateCount: urls.count,
-                resultCount: fileResults.count,
-                accessIssues: accessIssues
-            )
-            diagnostics.record(
-                RememBarDiagnosticEvent.spotlightProviderFinished,
-                fields: [
-                    "query": query,
-                    "candidateCount": "\(urls.count)",
-                    "accessIssueCount": "\(accessIssues.count)",
-                    "resultCount": "\(results.count)",
-                    "sourceStatusCount": "\(sourceStatuses.count)",
-                    "durationMs": "\(Int(Date().timeIntervalSince(startedAt) * 1000))",
-                    "topResultIDs": results.prefix(5).map(\.id).joined(separator: ",")
-                ]
-            )
-            return MemorySearchResponse(results: results, sourceStatuses: sourceStatuses)
         } catch {
-            let status = MemorySearchSourceStatus(
-                id: "files",
-                sourceName: "Files",
-                state: .failed,
-                detail: "File search failed"
-            )
             diagnostics.record(
                 RememBarDiagnosticEvent.spotlightProviderFailed,
                 level: .error,
@@ -121,14 +64,75 @@ struct SpotlightFileSearchProvider: MemorySearching, Sendable {
                     "durationMs": "\(Int(Date().timeIntervalSince(startedAt) * 1000))"
                 ]
             )
-            return MemorySearchResponse(sourceStatuses: [status])
+            return MemorySearchResponse(
+                sourceStatuses: [Self.filesStatus(state: .failed, detail: "File search failed")]
+            )
         }
     }
 
-    private static func results(fileResults: [MemoryResult], limit: Int) -> [MemoryResult] {
-        fileResults
+    private func skippedResponse(query: String, refinements: [String]) -> MemorySearchResponse {
+        diagnostics.record(
+            RememBarDiagnosticEvent.spotlightProviderEmptyPlan,
+            fields: [
+                "query": query,
+                "refinementCount": "\(refinements.count)"
+            ]
+        )
+        return MemorySearchResponse(
+            sourceStatuses: [Self.filesStatus(state: .skipped, detail: "No file-search terms")]
+        )
+    }
+
+    private func recordAccessIssues(_ accessIssues: [FileSearchAccessIssue], query: String) {
+        guard !accessIssues.isEmpty else { return }
+        diagnostics.record(
+            RememBarDiagnosticEvent.fileSearchAccessDenied,
+            level: .warning,
+            fields: [
+                "query": query,
+                "locationNames": accessIssues.map(\.locationName).joined(separator: ","),
+                "paths": accessIssues.map(\.path).joined(separator: ","),
+                "reasons": accessIssues.map(\.reason).joined(separator: ",")
+            ]
+        )
+    }
+
+    private func makeResponse(
+        urls: [URL],
+        plan: SpotlightFileQueryPlan,
+        limit: Int,
+        accessIssues: [FileSearchAccessIssue],
+        logging: (query: String, startedAt: Date)
+    ) -> MemorySearchResponse {
+        let results = FileResultRanker
+            .rank(urls: urls, plan: plan, home: home, now: now())
             .prefix(limit)
-            .map { $0 }
+            .map {
+                MemoryResult(
+                    fileURL: $0.url,
+                    displayPath: $0.displayPath,
+                    modifiedAt: $0.modifiedAt,
+                    rank: $0.score
+                )
+            }
+        let sourceStatuses = Self.sourceStatuses(
+            candidateCount: urls.count,
+            resultCount: results.count,
+            accessIssues: accessIssues
+        )
+        diagnostics.record(
+            RememBarDiagnosticEvent.spotlightProviderFinished,
+            fields: [
+                "query": logging.query,
+                "candidateCount": "\(urls.count)",
+                "accessIssueCount": "\(accessIssues.count)",
+                "resultCount": "\(results.count)",
+                "sourceStatusCount": "\(sourceStatuses.count)",
+                "durationMs": "\(Int(Date().timeIntervalSince(logging.startedAt) * 1000))",
+                "topResultIDs": results.prefix(5).map(\.id).joined(separator: ",")
+            ]
+        )
+        return MemorySearchResponse(results: results, sourceStatuses: sourceStatuses)
     }
 
     private static func sourceStatuses(
@@ -137,9 +141,7 @@ struct SpotlightFileSearchProvider: MemorySearching, Sendable {
         accessIssues: [FileSearchAccessIssue]
     ) -> [MemorySearchSourceStatus] {
         var statuses = [
-            MemorySearchSourceStatus(
-                id: "files",
-                sourceName: "Files",
+            filesStatus(
                 state: .searched,
                 detail: "\(resultCount) results from \(candidateCount) Spotlight candidates"
             )
@@ -153,6 +155,18 @@ struct SpotlightFileSearchProvider: MemorySearching, Sendable {
             )
         })
         return statuses
+    }
+
+    private static func filesStatus(
+        state: MemorySearchSourceStatus.State,
+        detail: String
+    ) -> MemorySearchSourceStatus {
+        MemorySearchSourceStatus(
+            id: "files",
+            sourceName: "Files",
+            state: state,
+            detail: detail
+        )
     }
 
     private static func sourceIDComponent(_ value: String) -> String {

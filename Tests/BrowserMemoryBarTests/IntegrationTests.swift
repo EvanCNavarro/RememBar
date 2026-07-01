@@ -1,5 +1,7 @@
-@testable import BrowserMemoryBar
+// Cohesive end-to-end suite; splitting fragments scenarios, so the file/type length limits are relaxed here.
+// swiftlint:disable file_length type_body_length
 import AppKit
+@testable import BrowserMemoryBar
 import Foundation
 import SQLite3
 import Testing
@@ -100,7 +102,7 @@ struct IntegrationTests {
 
     @Test("composite memory search provider sorts equal rank and title deterministically")
     func compositeMemorySearchProviderSortsEqualRankAndTitleDeterministically() async {
-        let b = MemoryResult(
+        let resultB = MemoryResult(
             id: "b",
             title: "Same title",
             detail: "Zen · Jun 27 · example.com",
@@ -110,7 +112,7 @@ struct IntegrationTests {
             browser: .zen,
             rank: 90
         )
-        let a = MemoryResult(
+        let resultA = MemoryResult(
             id: "a",
             title: "Same title",
             detail: "Zen · Jun 27 · example.com",
@@ -121,13 +123,13 @@ struct IntegrationTests {
             rank: 90
         )
         let provider = CompositeMemorySearchProvider(providers: [
-            StaticMemorySearchProvider(results: [b]),
-            StaticMemorySearchProvider(results: [a])
+            StaticMemorySearchProvider(results: [resultB]),
+            StaticMemorySearchProvider(results: [resultA])
         ])
 
         let results = await provider.search(query: "same", refinements: [], limit: 5)
 
-        #expect(results == [a, b])
+        #expect(results == [resultA, resultB])
     }
 
     @Test("composite search response merges provider statuses with ranked results")
@@ -301,14 +303,21 @@ struct IntegrationTests {
     @Test("one password provider expands the query through alias groups")
     func onePasswordProviderExpandsAliases() async {
         let items: [OnePasswordItemSummary] = [
-            OnePasswordItemSummary(id: "ecn", title: "ECN Portal", vaultID: "v", vaultName: "Private", category: "LOGIN")
+            OnePasswordItemSummary(
+                id: "ecn",
+                title: "ECN Portal",
+                vaultID: "v",
+                vaultName: "Private",
+                category: "LOGIN"
+            )
         ]
         // evan→ecn alias: searching "evan" finds the ECN item it otherwise wouldn't.
         let aliased = OnePasswordSearchProvider(
             itemLister: StubOnePasswordItemLister(result: .success(items)),
             aliases: AliasGroups(groups: [["evan", "ecn"]])
         )
-        #expect(await aliased.searchResponse(query: "evan", refinements: [], limit: 5).results.map(\.title) == ["ECN Portal"])
+        let aliasedTitles = await aliased.searchResponse(query: "evan", refinements: [], limit: 5).results.map(\.title)
+        #expect(aliasedTitles == ["ECN Portal"])
 
         // Without the alias, "evan" matches nothing in "ECN Portal".
         let plain = OnePasswordSearchProvider(itemLister: StubOnePasswordItemLister(result: .success(items)))
@@ -435,7 +444,8 @@ struct IntegrationTests {
         let scriptURL = try writeExecutableShellScript("""
         #!/bin/sh
         printf '%s\\n' "$@" > \(shellSingleQuoted(argsURL.path))
-        printf '[{"id":"facebook-item","title":"Facebook","vault":{"id":"private-vault","name":"Private"},"category":"LOGIN"}]'
+        printf '[{"id":"facebook-item","title":"Facebook",'
+        printf '"vault":{"id":"private-vault","name":"Private"},"category":"LOGIN"}]'
         """)
         let lister = OnePasswordCLIItemLister(executableURL: scriptURL, timeout: .seconds(2))
 
@@ -459,7 +469,8 @@ struct IntegrationTests {
           if [ "$i" -gt 0 ]; then
             printf ','
           fi
-          printf '{"id":"item-%s","title":"Facebook %s","vault":{"id":"private-vault","name":"Private"},"category":"LOGIN"}' "$i" "$i"
+          printf '{"id":"item-%s","title":"Facebook %s",' "$i" "$i"
+          printf '"vault":{"id":"private-vault","name":"Private"},"category":"LOGIN"}'
           i=$((i + 1))
         done
         printf ']'
@@ -538,7 +549,8 @@ struct IntegrationTests {
     func memoryResultTargetsExposeSourceSpecificActionLabels() throws {
         let web = MemoryResultTarget.web(url: URL(string: "https://example.com")!, browser: .zen)
         let file = MemoryResultTarget.file(URL(fileURLWithPath: "/Users/example/Documents/alpha.psd"))
-        let settings = MemoryResultTarget.systemSettings(URL(string: "x-apple.systempreferences:com.apple.preference.security?Privacy_AllFiles")!)
+        let settingsURL = URL(string: "x-apple.systempreferences:com.apple.preference.security?Privacy_AllFiles")!
+        let settings = MemoryResultTarget.systemSettings(settingsURL)
         let onePasswordTarget = try #require(ExternalAppTarget.onePassword())
         let external = MemoryResultTarget.externalApp(onePasswordTarget)
 
@@ -762,7 +774,9 @@ struct IntegrationTests {
             return openDescriptorsAfter <= openDescriptorsBefore + 8
         }
         let openDescriptorsAfter = try openFileDescriptorCount()
-        #expect(returnedToBaseline, "open descriptors after launch failures: \(openDescriptorsAfter), before: \(openDescriptorsBefore)")
+        let descriptorMessage = "open descriptors after launch failures: "
+            + "\(openDescriptorsAfter), before: \(openDescriptorsBefore)"
+        #expect(returnedToBaseline, Comment(rawValue: descriptorMessage))
     }
 
     @Test("mdfind spotlight search logs launch failures with executable and query")
@@ -797,3 +811,4 @@ struct IntegrationTests {
         #expect(failure?.fields["error"]?.isEmpty == false)
     }
 }
+// swiftlint:enable file_length type_body_length

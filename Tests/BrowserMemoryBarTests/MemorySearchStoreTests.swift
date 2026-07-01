@@ -1,5 +1,5 @@
-@testable import BrowserMemoryBar
 import AppKit
+@testable import BrowserMemoryBar
 import Foundation
 import SQLite3
 import Testing
@@ -45,6 +45,8 @@ struct MemorySearchStoreTests {
     }
 
     @Test("memory search store treats each submitted ramble as a fresh search")
+    // Verbose end-to-end setup + assertions for a multi-submit scenario; splitting would obscure it.
+    // swiftlint:disable:next function_body_length
     func memorySearchStoreTreatsEachSubmittedRambleAsFreshSearch() async throws {
         let provider = RequestRecordingSearchProvider()
         let directory = try temporaryDirectory().appendingPathComponent("Diagnostics", isDirectory: true)

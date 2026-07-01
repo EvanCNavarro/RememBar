@@ -34,7 +34,12 @@ enum FileResultRanker {
         return bestByDuplicateKey.values.sorted(by: isBetter)
     }
 
-    private static func candidate(url: URL, plan: SpotlightFileQueryPlan, home: URL, now: Date) -> RankedFileCandidate? {
+    private static func candidate(
+        url: URL,
+        plan: SpotlightFileQueryPlan,
+        home: URL,
+        now: Date
+    ) -> RankedFileCandidate? {
         let values = try? url.resourceValues(forKeys: [
             .isRegularFileKey,
             .contentModificationDateKey,
@@ -50,7 +55,13 @@ enum FileResultRanker {
         }
 
         let displayPath = displayPath(for: url, home: home)
-        let score = score(url: url, displayPath: displayPath, plan: plan, modifiedAt: values?.contentModificationDate, now: now)
+        let score = score(
+            url: url,
+            displayPath: displayPath,
+            plan: plan,
+            modifiedAt: values?.contentModificationDate,
+            now: now
+        )
         guard score > 0 else { return nil }
 
         return RankedFileCandidate(
@@ -73,46 +84,27 @@ enum FileResultRanker {
         let stem = url.deletingPathExtension().lastPathComponent.lowercased()
         let nameTerms = Set(MemorySearchTokenizer.tokenize(fileName))
         let path = displayPath.lowercased()
-        var score = 0
-        var matchedEntityTerms = 0
-        var matchedDescriptorTerms = 0
 
-        for term in plan.entityTerms {
-            if stem == term {
-                score += 150
-                matchedEntityTerms += 1
-            } else if nameTerms.contains(term) {
-                score += 105
-                matchedEntityTerms += 1
-            } else if fileName.contains(term) {
-                score += 80
-                matchedEntityTerms += 1
-            } else if path.contains(term) {
-                score += 35
-                matchedEntityTerms += 1
-            }
-        }
+        let entity = entityScore(
+            terms: plan.entityTerms,
+            stem: stem,
+            nameTerms: nameTerms,
+            fileName: fileName,
+            path: path
+        )
+        let descriptor = descriptorScore(
+            terms: plan.descriptorTerms,
+            stem: stem,
+            nameTerms: nameTerms,
+            fileName: fileName,
+            path: path
+        )
+        var score = entity.score + descriptor.score
 
-        for term in plan.descriptorTerms {
-            if stem == term {
-                score += 25
-                matchedDescriptorTerms += 1
-            } else if nameTerms.contains(term) {
-                score += 20
-                matchedDescriptorTerms += 1
-            } else if fileName.contains(term) {
-                score += 14
-                matchedDescriptorTerms += 1
-            } else if path.contains(term) {
-                score += 6
-                matchedDescriptorTerms += 1
-            }
-        }
-
-        if !plan.entityTerms.isEmpty, matchedEntityTerms == 0 {
+        if !plan.entityTerms.isEmpty, entity.matched == 0 {
             return 0
         }
-        if plan.entityTerms.isEmpty, matchedDescriptorTerms == 0, !plan.descriptorTerms.isEmpty {
+        if plan.entityTerms.isEmpty, descriptor.matched == 0, !plan.descriptorTerms.isEmpty {
             return 0
         }
 
@@ -127,6 +119,60 @@ enum FileResultRanker {
 
         score -= min(30, displayPath.split(separator: "/").count * 2)
         return score
+    }
+
+    private static func entityScore(
+        terms: [String],
+        stem: String,
+        nameTerms: Set<String>,
+        fileName: String,
+        path: String
+    ) -> (score: Int, matched: Int) {
+        var score = 0
+        var matched = 0
+        for term in terms {
+            if stem == term {
+                score += 150
+                matched += 1
+            } else if nameTerms.contains(term) {
+                score += 105
+                matched += 1
+            } else if fileName.contains(term) {
+                score += 80
+                matched += 1
+            } else if path.contains(term) {
+                score += 35
+                matched += 1
+            }
+        }
+        return (score, matched)
+    }
+
+    private static func descriptorScore(
+        terms: [String],
+        stem: String,
+        nameTerms: Set<String>,
+        fileName: String,
+        path: String
+    ) -> (score: Int, matched: Int) {
+        var score = 0
+        var matched = 0
+        for term in terms {
+            if stem == term {
+                score += 25
+                matched += 1
+            } else if nameTerms.contains(term) {
+                score += 20
+                matched += 1
+            } else if fileName.contains(term) {
+                score += 14
+                matched += 1
+            } else if path.contains(term) {
+                score += 6
+                matched += 1
+            }
+        }
+        return (score, matched)
     }
 
     private static func displayPath(for url: URL, home: URL) -> String {

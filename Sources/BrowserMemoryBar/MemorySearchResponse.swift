@@ -31,7 +31,9 @@ struct MemorySearchSourceStatus: Identifiable, Equatable, Sendable {
         case .blocked:
             return "Permission required"
         case .unavailable:
-            return detail.contains("/") ? "Source is unavailable" : SensitivePathPolicy.redactingSensitivePaths(in: detail)
+            return detail.contains("/")
+                ? "Source is unavailable"
+                : SensitivePathPolicy.redactingSensitivePaths(in: detail)
         case .failed:
             return "Could not read this source"
         }

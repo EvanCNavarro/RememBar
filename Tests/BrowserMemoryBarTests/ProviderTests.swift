@@ -1,5 +1,7 @@
-@testable import BrowserMemoryBar
+// One provider suite per file; splitting scatters related cases, so the file/type length limits are relaxed here.
+// swiftlint:disable file_length type_body_length
 import AppKit
+@testable import BrowserMemoryBar
 import Foundation
 import SQLite3
 import Testing
@@ -212,27 +214,33 @@ struct ProviderTests {
         let ecnResume = row("ECN resume", "https://ecn.dev/resume")
 
         // single term: "evan" finds the ECN page via the alias — and nothing without it
-        #expect(HistoryRanker.search(rows: [ecnPage], query: "evan", limit: 10, aliases: aliases).map(\.title) == ["ECN blog"])
+        let evanAliased = HistoryRanker.search(rows: [ecnPage], query: "evan", limit: 10, aliases: aliases)
+        #expect(evanAliased.map(\.title) == ["ECN blog"])
         #expect(HistoryRanker.search(rows: [ecnPage], query: "evan", limit: 10).isEmpty)
 
         // two slots "evan resume": a page matching ONLY the evan-group (no resume) is rejected —
         // the alias must not inflate the count and produce a false positive.
-        #expect(
-            HistoryRanker.search(rows: [ecnPage, resumePage, ecnResume], query: "evan resume", limit: 10, aliases: aliases)
-                .map(\.title) == ["ECN resume"]
+        let evanResume = HistoryRanker.search(
+            rows: [ecnPage, resumePage, ecnResume],
+            query: "evan resume",
+            limit: 10,
+            aliases: aliases
         )
+        #expect(evanResume.map(\.title) == ["ECN resume"])
 
         // Pinned: typing two members of the SAME family ("evan ecn") is OR-treated — a page with
         // just "ecn" satisfies both slots. Degenerate input, but intentional.
-        #expect(HistoryRanker.search(rows: [ecnPage], query: "evan ecn", limit: 10, aliases: aliases).map(\.title) == ["ECN blog"])
+        let evanEcn = HistoryRanker.search(rows: [ecnPage], query: "evan ecn", limit: 10, aliases: aliases)
+        #expect(evanEcn.map(\.title) == ["ECN blog"])
     }
 
     @Test("history source discovery classifies chromium firefox and safari")
     func historySourceDiscoveryClassifiesFamilies() throws {
         let root = try temporaryDirectory()
+        let support = "Library/Application Support/"
         try createEmptyFile(at: root.appendingPathComponent("Library/Safari/History.db"))
-        try createEmptyFile(at: root.appendingPathComponent("Library/Application Support/Google/Chrome/Default/History"))
-        try createEmptyFile(at: root.appendingPathComponent("Library/Application Support/zen/Profiles/abc.default/places.sqlite"))
+        try createEmptyFile(at: root.appendingPathComponent(support + "Google/Chrome/Default/History"))
+        try createEmptyFile(at: root.appendingPathComponent(support + "zen/Profiles/abc.default/places.sqlite"))
 
         let sources = HistorySource.discover(home: root)
 
@@ -244,21 +252,26 @@ struct ProviderTests {
     @Test("history source discovery includes non-default chromium profiles")
     func historySourceDiscoveryIncludesChromiumProfiles() throws {
         let root = try temporaryDirectory()
-        try createEmptyFile(at: root.appendingPathComponent("Library/Application Support/Google/Chrome/Profile 1/History"))
-        try createEmptyFile(at: root.appendingPathComponent("Library/Application Support/com.operasoftware.Opera/History"))
+        let support = "Library/Application Support/"
+        try createEmptyFile(at: root.appendingPathComponent(support + "Google/Chrome/Profile 1/History"))
+        try createEmptyFile(at: root.appendingPathComponent(support + "com.operasoftware.Opera/History"))
 
         let sources = HistorySource.discover(home: root)
 
         #expect(sources.contains { $0.family == .chromium && $0.browser == .chrome && $0.profile == "Profile 1" })
-        #expect(sources.contains { $0.family == .chromium && $0.browser == .opera && $0.profile == "com.operasoftware.Opera" })
+        #expect(sources.contains { source in
+            source.family == .chromium && source.browser == .opera
+                && source.profile == "com.operasoftware.Opera"
+        })
     }
 
     @Test("history source discovery reports profile root enumeration failures")
     func historySourceDiscoveryReportsProfileRootEnumerationFailures() throws {
         let root = try temporaryDirectory()
-        try createEmptyFile(at: root.appendingPathComponent("Library/Application Support/Google/Chrome/Default/History"))
+        let support = "Library/Application Support/"
+        try createEmptyFile(at: root.appendingPathComponent(support + "Google/Chrome/Default/History"))
         try createTextFile(
-            at: root.appendingPathComponent("Library/Application Support/Firefox/Profiles"),
+            at: root.appendingPathComponent(support + "Firefox/Profiles"),
             contents: "not a directory"
         )
 
@@ -300,17 +313,19 @@ struct ProviderTests {
 
     @Test("browser family mapping preserves non-default app identities")
     func browserFamilyMappingPreservesAppIdentity() {
-        #expect(BrowserRef.chromiumFamily(forPath: "/users/me/library/application support/google/chrome for testing/default/history") == .chromeForTesting)
-        #expect(BrowserRef.chromiumFamily(forPath: "/users/me/library/application support/arc/user data/profile 1/history") == .arc)
-        #expect(BrowserRef.chromiumFamily(forPath: "/users/me/library/application support/bravesoftware/brave-browser/default/history") == .brave)
-        #expect(BrowserRef.chromiumFamily(forPath: "/users/me/library/application support/microsoft edge/profile 2/history") == .edge)
-        #expect(BrowserRef.chromiumFamily(forPath: "/users/me/library/application support/vivaldi/default/history") == .vivaldi)
-        #expect(BrowserRef.chromiumFamily(forPath: "/users/me/library/application support/com.operasoftware.opera/history") == .opera)
-        #expect(BrowserRef.chromiumFamily(forPath: "/users/me/library/application support/chromium/default/history") == .chromium)
-        #expect(BrowserRef.firefoxFamily(forPath: "/users/me/library/application support/firefox/profiles/main/places.sqlite") == .firefox)
-        #expect(BrowserRef.firefoxFamily(forPath: "/users/me/library/application support/zen/profiles/main/places.sqlite") == .zen)
-        #expect(BrowserRef.firefoxFamily(forPath: "/users/me/library/application support/waterfox/profiles/main/places.sqlite") == .waterfox)
-        #expect(BrowserRef.firefoxFamily(forPath: "/users/me/library/application support/librewolf/profiles/main/places.sqlite") == .libreWolf)
+        let base = "/users/me/library/application support/"
+        let chromeTestingPath = base + "google/chrome for testing/default/history"
+        #expect(BrowserRef.chromiumFamily(forPath: chromeTestingPath) == .chromeForTesting)
+        #expect(BrowserRef.chromiumFamily(forPath: base + "arc/user data/profile 1/history") == .arc)
+        #expect(BrowserRef.chromiumFamily(forPath: base + "bravesoftware/brave-browser/default/history") == .brave)
+        #expect(BrowserRef.chromiumFamily(forPath: base + "microsoft edge/profile 2/history") == .edge)
+        #expect(BrowserRef.chromiumFamily(forPath: base + "vivaldi/default/history") == .vivaldi)
+        #expect(BrowserRef.chromiumFamily(forPath: base + "com.operasoftware.opera/history") == .opera)
+        #expect(BrowserRef.chromiumFamily(forPath: base + "chromium/default/history") == .chromium)
+        #expect(BrowserRef.firefoxFamily(forPath: base + "firefox/profiles/main/places.sqlite") == .firefox)
+        #expect(BrowserRef.firefoxFamily(forPath: base + "zen/profiles/main/places.sqlite") == .zen)
+        #expect(BrowserRef.firefoxFamily(forPath: base + "waterfox/profiles/main/places.sqlite") == .waterfox)
+        #expect(BrowserRef.firefoxFamily(forPath: base + "librewolf/profiles/main/places.sqlite") == .libreWolf)
     }
 
     @Test("history search window defaults to thirty one days")
@@ -926,8 +941,13 @@ struct ProviderTests {
 
         #expect(results.isEmpty)
         let events = try diagnosticEvents(at: diagnostics.logURL)
-        #expect(events.contains { $0.name == "spotlight.provider.started" && $0.fields["query"]?.contains("alpha") == true })
-        #expect(events.contains { $0.name == "spotlight.provider.failed" && $0.fields["error"]?.contains("forced spotlight failure") == true })
+        #expect(events.contains { event in
+            event.name == "spotlight.provider.started" && event.fields["query"]?.contains("alpha") == true
+        })
+        #expect(events.contains { event in
+            event.name == "spotlight.provider.failed"
+                && event.fields["error"]?.contains("forced spotlight failure") == true
+        })
     }
 
     @Test("local history provider writes diagnostics for empty source searches")
@@ -953,7 +973,10 @@ struct ProviderTests {
         let events = try diagnosticEvents(at: diagnostics.logURL)
         #expect(events.contains { $0.name == "history.provider.started" && $0.fields["query"] == "alpha soccer card" })
         #expect(events.contains { $0.name == "history.discovery.finished" && $0.fields["sourceCount"] == "0" })
-        #expect(events.contains { $0.name == "history.provider.finished" && $0.fields["rowCount"] == "0" && $0.fields["resultCount"] == "0" })
+        #expect(events.contains { event in
+            event.name == "history.provider.finished"
+                && event.fields["rowCount"] == "0" && event.fields["resultCount"] == "0"
+        })
     }
 
     @Test("spotlight file provider keeps generic card files below entity matches")
@@ -1242,3 +1265,4 @@ struct ProviderTests {
         #expect(results.map(\.url) == [recent, old])
     }
 }
+// swiftlint:enable file_length type_body_length

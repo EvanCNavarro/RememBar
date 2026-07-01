@@ -18,17 +18,17 @@ enum MenuBarWindowPlacement {
         guard !visibleScreenFrames.contains(where: { $0.contains(windowFrame) }) else { return nil }
 
         let screen = nearestScreen(to: windowFrame, in: visibleScreenFrames)
-        let x = clamped(
+        let originX = clamped(
             windowFrame.minX,
             min: screen.minX + margin,
             max: screen.maxX - windowFrame.width - margin
         )
-        let y = clamped(
+        let originY = clamped(
             windowFrame.minY,
             min: screen.minY + margin,
             max: screen.maxY - windowFrame.height - margin
         )
-        return CGPoint(x: x, y: y)
+        return CGPoint(x: originX, y: originY)
     }
 
     private static func nearestScreen(to windowFrame: CGRect, in screens: [CGRect]) -> CGRect {
@@ -44,9 +44,9 @@ enum MenuBarWindowPlacement {
     }
 
     private static func squaredDistance(from lhs: CGPoint, to rhs: CGPoint) -> CGFloat {
-        let x = lhs.x - rhs.x
-        let y = lhs.y - rhs.y
-        return x * x + y * y
+        let dx = lhs.x - rhs.x
+        let dy = lhs.y - rhs.y
+        return dx * dx + dy * dy
     }
 }
 
@@ -72,7 +72,9 @@ enum MenuBarWindowPositioner {
         let visibleFrames = NSScreen.screens.map(\.visibleFrame)
         for window in NSApp.windows where isRememBarPanelCandidate(window) {
             let frame = window.frame
-            guard let origin = MenuBarWindowPlacement.adjustedOrigin(for: frame, visibleScreenFrames: visibleFrames) else {
+            guard let origin = MenuBarWindowPlacement.adjustedOrigin(
+                for: frame, visibleScreenFrames: visibleFrames
+            ) else {
                 continue
             }
             window.setFrameOrigin(origin)
