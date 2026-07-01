@@ -1,5 +1,13 @@
 # RememBar — Post-Review Cleanup & Optimization Plan
 
+> **RESOLVED (2026-07-01):** Phases 1–4 done or measured-SKIP (see commits + `.engine/state/`). The
+> last two open items — remote-image `URLCache` (3.2) and sensitive-path hardening (4.1/4.2) — were
+> STOKE-audited (`.engine/state/stoke-plan-remaining.md`) and adversarially re-checked: **both SKIP.**
+> URLCache is already handled by `URLCache.shared` (AsyncImage); the policy hardening is dead code —
+> mdfind never surfaces dot-dir secrets, and every indexed secret is already caught leaf-side. Nothing
+> left to build.
+
+
 Follow-ups deferred from the 2026-07-01 four-subsystem review (after `0522f2c` cleared all
 lint and `7675104` landed the thumbnail-presentation win). Ordered **foundational-first**: a
 trustworthy test suite, then safe cleanups, then optimizations (each gated on a real measurement),
