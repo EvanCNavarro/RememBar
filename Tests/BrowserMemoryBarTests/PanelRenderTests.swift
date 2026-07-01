@@ -11,6 +11,14 @@ private struct FixedResponseProvider: MemorySearching {
     }
 }
 
+/// Never returns within a render window — used to capture the real .loading (skeleton) state.
+private struct SlowProvider: MemorySearching {
+    func searchResponse(query: String, refinements: [String], limit: Int) async -> MemorySearchResponse {
+        try? await Task.sleep(for: .seconds(60))
+        return MemorySearchResponse(results: [], sourceStatuses: [])
+    }
+}
+
 @Suite("PanelRender")
 struct PanelRenderTests {
     /// Renders the REAL production MemoryPanel offscreen to a PNG so the layout can be reviewed
@@ -54,6 +62,20 @@ struct PanelRenderTests {
                    to: "panel_about.png")
         try render(AboutPopover(onCheckForUpdates: {}, onUninstall: {}, showingActions: true).fixedSize(),
                    to: "panel_about_actions.png")
+
+        // Empty — the real default panel (just the field + its actual placeholder, no invented copy).
+        let emptyStore = MemorySearchStore(
+            searchProvider: FixedResponseProvider(response: MemorySearchResponse(results: [], sourceStatuses: []))
+        )
+        try render(MemoryPanel(store: emptyStore).frame(width: 420).background(Tokens.panel),
+                   to: "panel_empty.png")
+
+        // Loading — submit against a never-returning provider, render while phase == .loading.
+        let loadingStore = MemorySearchStore(searchProvider: SlowProvider())
+        loadingStore.inputText = "linkedin"
+        loadingStore.submit()
+        try render(MemoryPanel(store: loadingStore).frame(width: 420).background(Tokens.panel),
+                   to: "panel_loading.png")
     }
 
     @MainActor

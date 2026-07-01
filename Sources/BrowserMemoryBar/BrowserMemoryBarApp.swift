@@ -19,6 +19,24 @@ struct RememBarApp: App {
 
     init() {
         RememBarDiagnostics.shared.startSession()
+        #if DEBUG
+        // Dev-only UI gallery. `REMEMBAR_GALLERY=1 swift run RememBar` opens a normal window hosting
+        // the REAL views (live + interactive). Dispatched so NSApp is up when it runs; the SwiftUI
+        // adaptor never calls applicationDidFinishLaunching, so init() is the reliable hook.
+        if ProcessInfo.processInfo.environment["REMEMBAR_GALLERY"] != nil {
+            DispatchQueue.main.async { GalleryWindowController.show() }
+        }
+
+        // Dev/demo hook (env-gated, no-op unless set): REMEMBAR_AUTOCHECK=1 auto-triggers "Check for
+        // Updates" shortly after launch, so the real Sparkle update flow can be reviewed on demand —
+        // pair it with a test build labeled an older version so the live feed reads as an update.
+        // Inside #if DEBUG so this dev affordance is never compiled into a release build.
+        if ProcessInfo.processInfo.environment["REMEMBAR_AUTOCHECK"] != nil {
+            DispatchQueue.main.asyncAfter(deadline: .now() + 2) {
+                SparkleUpdater.shared.checkForUpdates()
+            }
+        }
+        #endif
     }
 
     /// Move RememBar's data and the app itself to the Trash, then quit. The data (the privacy-
@@ -55,6 +73,10 @@ struct RememBarApp: App {
     }
 
     var body: some Scene {
+        menuBarScene
+    }
+
+    private var menuBarScene: some Scene {
         MenuBarExtra {
             MemoryPanel(
                 store: store,
