@@ -17,11 +17,16 @@ struct MemoryPanel: View {
         VStack(alignment: .leading, spacing: Tokens.space) {
             HStack(spacing: Tokens.space) {
                 CommandField(store: store)
-                AboutControl(
-                    onCheckForUpdates: onCheckForUpdates,
-                    onUninstall: onUninstall,
-                    onManageFamilies: onManageFamilies
-                )
+                if let onManageFamilies {
+                    // A distinct settings affordance — term families are configuration, not "help",
+                    // so they get a gear next to the "?" rather than living inside the About menu.
+                    IconControlButton(size: Tokens.control, radius: Tokens.radius, action: onManageFamilies) {
+                        Image(systemName: "gearshape")
+                            .font(.system(size: 14, weight: .semibold))
+                    }
+                    .accessibilityLabel("Term Families")
+                }
+                AboutControl(onCheckForUpdates: onCheckForUpdates, onUninstall: onUninstall)
             }
 
             if store.showsResultsQuery {

@@ -172,9 +172,9 @@ struct GalleryView: View {
         case .loading:
             MemoryPanel(store: loadingStore).frame(width: 384)
         case .about:
-            AboutPopover(onCheckForUpdates: {}, onUninstall: {}, onManageFamilies: {})
+            AboutPopover(onCheckForUpdates: {}, onUninstall: {})
         case .aboutActions:
-            AboutPopover(onCheckForUpdates: {}, onUninstall: {}, onManageFamilies: {}, showingActions: true)
+            AboutPopover(onCheckForUpdates: {}, onUninstall: {}, showingActions: true)
         case .termFamilies:
             AliasEditorView(model: Self.galleryEditorModel).frame(width: 460, height: 400)
         case .updateAvailable:

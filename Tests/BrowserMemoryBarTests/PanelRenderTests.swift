@@ -76,6 +76,17 @@ struct PanelRenderTests {
         try render(MemoryPanel(store: emptyStore).frame(width: 420).background(Tokens.panel),
                    to: "panel_empty.png")
 
+        // Header controls — the settings gear (Term Families) sits next to the About "?" only when
+        // the manage-families action is wired. Proves the two-icon layout + separation from "help".
+        let gearStore = MemorySearchStore(
+            searchProvider: FixedResponseProvider(response: MemorySearchResponse(results: [], sourceStatuses: []))
+        )
+        try render(
+            MemoryPanel(store: gearStore, onCheckForUpdates: {}, onUninstall: {}, onManageFamilies: {})
+                .frame(width: 420).background(Tokens.panel),
+            to: "panel_gear.png"
+        )
+
         // Loading — submit against a never-returning provider, render while phase == .loading.
         let loadingStore = MemorySearchStore(searchProvider: SlowProvider())
         loadingStore.inputText = "linkedin"

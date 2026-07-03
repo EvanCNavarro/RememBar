@@ -1,9 +1,10 @@
 import SwiftUI
 
-/// The term-families editor: one row per family, each family a set of interchangeable-word chips plus
-/// an add-word field. Live apply — every edit flows through `AliasEditorModel` → `AliasCatalog` and is
-/// used by the very next search; there is no Save button (macOS settings are modeless). Restrained,
-/// dark, native — sized for a small utility window, not a document editor.
+/// The term-families editor: one card per family. Each card has a header line (the family's identity
+/// + status + its delete control, kept together for proximity) over a chip row of its words plus a
+/// clearly-affordanced "add word" target. Live apply — every edit flows through `AliasEditorModel` →
+/// `AliasCatalog` and is used by the next search; there is no Save button (macOS settings are
+/// modeless). Restrained, dark, native — sized for a small utility window.
 struct AliasEditorView: View {
     @ObservedObject var model: AliasEditorModel
 
@@ -14,27 +15,24 @@ struct AliasEditorView: View {
 
             if model.rows.isEmpty {
                 emptyState
+                addFamilyButton
             } else if isOffscreenRender {
-                // ImageRenderer can't lay out lazy ScrollView content; render the identical rows in a
+                // ImageRenderer can't lay out lazy ScrollView content; render the identical list in a
                 // plain VStack for offscreen visual proof.
-                familyRows.padding(.vertical, Tokens.micro)
+                familyList
             } else {
-                ScrollView {
-                    familyRows.padding(.vertical, Tokens.micro)
-                }
+                ScrollView { familyList }
             }
-
-            addFamilyButton
         }
         .padding(Tokens.space + Tokens.micro)
-        .frame(minWidth: 380, minHeight: 320)
+        .frame(minWidth: 380, minHeight: 300)
         .background(Tokens.panel)
     }
 
-    private var familyRows: some View {
+    private var familyList: some View {
         VStack(alignment: .leading, spacing: Tokens.space) {
             ForEach(model.rows) { row in
-                FamilyRow(
+                FamilyCard(
                     row: row,
                     isActive: model.isActive(row.id),
                     onAddWord: { model.addWord($0, toRow: row.id) },
@@ -42,33 +40,35 @@ struct AliasEditorView: View {
                     onRemoveFamily: { model.removeRow(row.id) }
                 )
             }
+            addFamilyButton
         }
+        .padding(.vertical, Tokens.micro)
     }
 
     private var header: some View {
-        VStack(alignment: .leading, spacing: 2) {
+        HStack(alignment: .firstTextBaseline) {
             Text("Term Families")
                 .font(.system(size: 14, weight: .semibold))
                 .foregroundStyle(Tokens.text)
-            Text("Group interchangeable words — searching any one also finds the others. Applies as you type.")
+            Spacer(minLength: Tokens.space)
+            Text("search any word, find the whole family")
                 .font(Tokens.caption)
-                .foregroundStyle(Tokens.muted)
-                .fixedSize(horizontal: false, vertical: true)
+                .foregroundStyle(Tokens.quiet)
         }
     }
 
     private var emptyState: some View {
         VStack(alignment: .leading, spacing: Tokens.micro) {
-            Spacer(minLength: Tokens.space)
             Text("No term families yet.")
                 .font(Tokens.body)
                 .foregroundStyle(Tokens.muted)
-            Text("Add a family, then a few words that should mean the same thing (e.g. evan, ecn, navarro).")
+            Text("Group words that should mean the same thing — e.g. evan, ecn, navarro — so searching "
+                + "any one of them also surfaces the others.")
                 .font(Tokens.caption)
                 .foregroundStyle(Tokens.quiet)
                 .fixedSize(horizontal: false, vertical: true)
-            Spacer(minLength: Tokens.space)
         }
+        .padding(.vertical, Tokens.space)
         .frame(maxWidth: .infinity, alignment: .leading)
     }
 
@@ -79,64 +79,67 @@ struct AliasEditorView: View {
             HStack(spacing: Tokens.micro) {
                 Image(systemName: "plus")
                     .font(.system(size: 11, weight: .semibold))
-                Text("Add Family")
+                Text("New family")
                     .font(Tokens.caption.weight(.semibold))
             }
-            .foregroundStyle(Tokens.text)
-            .padding(.horizontal, Tokens.space)
-            .frame(height: Tokens.controlButton)
+            .foregroundStyle(Tokens.muted)
+            .frame(maxWidth: .infinity)
+            .frame(height: Tokens.control)
             .background(
-                RoundedRectangle(cornerRadius: Tokens.micro, style: .continuous)
-                    .fill(Tokens.row)
-                    .overlay(
-                        RoundedRectangle(cornerRadius: Tokens.micro, style: .continuous)
-                            .stroke(Tokens.line, lineWidth: 1)
-                    )
+                RoundedRectangle(cornerRadius: Tokens.radius, style: .continuous)
+                    .strokeBorder(style: StrokeStyle(lineWidth: 1, dash: [4, 3]))
+                    .foregroundStyle(Tokens.lineStrong)
             )
         }
         .buttonStyle(.plain)
+        .accessibilityLabel("Add a new term family")
     }
 }
 
-/// One family row: its word chips, an add-word field, a remove-family control, and a quiet hint when
-/// the family has fewer than two words (still inactive for search, but kept visible for editing).
-private struct FamilyRow: View {
+/// One family card: a header line (identity + status + delete, grouped for proximity) over its word
+/// chips and the add-word affordance.
+private struct FamilyCard: View {
     let row: AliasEditorModel.DraftRow
     let isActive: Bool
     let onAddWord: (String) -> Void
     let onRemoveWord: (String) -> Void
     let onRemoveFamily: () -> Void
 
-    @State private var draftWord = ""
+    // The family's scannable identity is its first word; a brand-new (wordless) family reads as such.
+    private var identity: String { row.words.first ?? "New family" }
 
     var body: some View {
-        VStack(alignment: .leading, spacing: Tokens.micro) {
-            HStack(alignment: .top, spacing: Tokens.space) {
-                ChipFlow(spacing: Tokens.micro) {
-                    ForEach(row.words, id: \.self) { word in
-                        WordChip(word: word, onRemove: { onRemoveWord(word) })
-                    }
-                    addWordField
+        VStack(alignment: .leading, spacing: Tokens.space) {
+            HStack(spacing: Tokens.micro + 2) {
+                Text(identity)
+                    .font(Tokens.caption.weight(.semibold))
+                    .foregroundStyle(row.words.isEmpty ? Tokens.quiet : Tokens.text)
+                    .lineLimit(1)
+                if !isActive {
+                    Text("· add a word to activate")
+                        .font(.system(size: 11))
+                        .foregroundStyle(Tokens.warning)
+                        .lineLimit(1)
                 }
-                Spacer(minLength: Tokens.micro)
+                Spacer(minLength: Tokens.space)
                 Button(action: onRemoveFamily) {
                     Image(systemName: "trash")
-                        .font(.system(size: 12, weight: .semibold))
+                        .font(.system(size: 11, weight: .semibold))
                         .foregroundStyle(Tokens.quiet)
-                        .frame(width: Tokens.controlButton, height: Tokens.controlButton)
                 }
                 .buttonStyle(.plain)
                 .help("Remove this family")
-                .accessibilityLabel("Remove family")
+                .accessibilityLabel("Remove \(identity) family")
             }
 
-            if !isActive {
-                Text("Add another word to activate this family")
-                    .font(.system(size: 10))
-                    .foregroundStyle(Tokens.quiet)
+            ChipFlow(spacing: Tokens.micro) {
+                ForEach(row.words, id: \.self) { word in
+                    WordChip(word: word, onRemove: { onRemoveWord(word) })
+                }
+                AddWordField(onCommit: onAddWord)
             }
         }
-        .padding(Tokens.space)
+        .padding(Tokens.space + Tokens.micro)
         .background(
             RoundedRectangle(cornerRadius: Tokens.radius, style: .continuous)
                 .fill(Tokens.row)
@@ -146,28 +149,47 @@ private struct FamilyRow: View {
                 )
         )
     }
+}
 
-    private var addWordField: some View {
-        TextField("add word", text: $draftWord)
-            .textFieldStyle(.plain)
-            .font(Tokens.caption)
-            .foregroundStyle(Tokens.text)
-            .frame(minWidth: 64)
-            .onSubmit(commit)
-            .onChange(of: draftWord) { _, new in
-                // Comma commits too (Apple's default tokenizing character alongside Return).
-                if new.contains(",") {
-                    draftWord = new.replacingOccurrences(of: ",", with: "")
-                    commit()
+/// The add-word affordance — a dashed "pill" that clearly reads as a target you type into, so it's
+/// never mistaken for another chip. Commits on Return or comma.
+private struct AddWordField: View {
+    let onCommit: (String) -> Void
+    @State private var draft = ""
+    @FocusState private var focused: Bool
+
+    var body: some View {
+        HStack(spacing: Tokens.micro) {
+            Image(systemName: "plus")
+                .font(.system(size: 9, weight: .bold))
+                .foregroundStyle(Tokens.quiet)
+            TextField("word", text: $draft)
+                .textFieldStyle(.plain)
+                .font(Tokens.caption)
+                .foregroundStyle(Tokens.text)
+                .frame(minWidth: 40)
+                .focused($focused)
+                .onSubmit(commit)
+                .onChange(of: draft) { _, new in
+                    if new.contains(",") {
+                        draft = new.replacingOccurrences(of: ",", with: "")
+                        commit()
+                    }
                 }
-            }
-            .padding(.horizontal, Tokens.micro)
-            .frame(height: 22)
+        }
+        .padding(.horizontal, Tokens.space)
+        .frame(height: 24)
+        .background(
+            Capsule(style: .continuous)
+                .strokeBorder(style: StrokeStyle(lineWidth: 1, dash: [3, 3]))
+                .foregroundStyle(focused ? Tokens.lineStrong : Tokens.line)
+        )
+        .accessibilityLabel("Add a word to this family")
     }
 
     private func commit() {
-        onAddWord(draftWord)
-        draftWord = ""
+        onCommit(draft)
+        draft = ""
     }
 }
 
@@ -192,7 +214,7 @@ private struct WordChip: View {
         }
         .padding(.leading, Tokens.space)
         .padding(.trailing, Tokens.micro + 1)
-        .frame(height: 22)
+        .frame(height: 24)
         .background(
             Capsule(style: .continuous)
                 .fill(Tokens.rowActive)

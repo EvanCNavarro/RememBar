@@ -8,7 +8,6 @@ import AppKit
 struct AboutControl: View {
     var onCheckForUpdates: (() -> Void)?
     var onUninstall: (() -> Void)?
-    var onManageFamilies: (() -> Void)?
     @State private var showAbout = false
 
     var body: some View {
@@ -18,11 +17,7 @@ struct AboutControl: View {
         })
         .accessibilityLabel("About RememBar")
         .popover(isPresented: $showAbout, arrowEdge: .bottom) {
-            AboutPopover(
-                onCheckForUpdates: onCheckForUpdates,
-                onUninstall: onUninstall,
-                onManageFamilies: onManageFamilies
-            )
+            AboutPopover(onCheckForUpdates: onCheckForUpdates, onUninstall: onUninstall)
         }
     }
 }
@@ -32,8 +27,6 @@ struct AboutPopover: View {
     var onCheckForUpdates: (() -> Void)?
     /// Optional for the same reason — the app injects the real "move RememBar to the Trash" action.
     var onUninstall: (() -> Void)?
-    /// Optional — the app injects the action that opens the Term Families editor window.
-    var onManageFamilies: (() -> Void)?
 
     @State private var confirmingRemoval = false
     @State private var showActions = false
@@ -41,12 +34,10 @@ struct AboutPopover: View {
     init(
         onCheckForUpdates: (() -> Void)? = nil,
         onUninstall: (() -> Void)? = nil,
-        onManageFamilies: (() -> Void)? = nil,
         showingActions: Bool = false
     ) {
         self.onCheckForUpdates = onCheckForUpdates
         self.onUninstall = onUninstall
-        self.onManageFamilies = onManageFamilies
         _showActions = State(initialValue: showingActions)
     }
 
@@ -77,7 +68,7 @@ struct AboutPopover: View {
 
                 Spacer(minLength: 0)
 
-                if onCheckForUpdates != nil || onUninstall != nil || onManageFamilies != nil {
+                if onCheckForUpdates != nil || onUninstall != nil {
                     EllipsisButton(isOn: $showActions)
                 }
             }
@@ -111,7 +102,6 @@ struct AboutPopover: View {
                         .onTapGesture { showActions = false }
                     ActionsDropdown(
                         onCheckForUpdates: onCheckForUpdates,
-                        onManageFamilies: onManageFamilies,
                         onRemove: onUninstall == nil ? nil : { confirmingRemoval = true },
                         dismiss: { showActions = false }
                     )
@@ -224,18 +214,11 @@ private struct EllipsisButton: View {
 /// its icons, and gives the destructive row a proper red hover.
 private struct ActionsDropdown: View {
     var onCheckForUpdates: (() -> Void)?
-    var onManageFamilies: (() -> Void)?
     var onRemove: (() -> Void)?
     let dismiss: () -> Void
 
     var body: some View {
         VStack(alignment: .leading, spacing: 1) {
-            if let onManageFamilies {
-                AboutMenuRow(title: "Term Families…", systemImage: "textformat.abc") {
-                    dismiss()
-                    onManageFamilies()
-                }
-            }
             if let onCheckForUpdates {
                 AboutMenuRow(title: "Check for Updates", systemImage: "arrow.triangle.2.circlepath") {
                     dismiss()
