@@ -61,3 +61,9 @@ Not before v0.5.0. Two problems, one fix — kept here so the rationale isn't lo
       from the About "…" menu. Shared `AliasCatalog` (lock-guarded, off-main-safe) is read per search,
       so edits apply live with no restart. Draft state keeps half-built families visible while the
       engine stays sanitized. STOKE-planned + skeptic-audited + TDD; verified in the real runtime.
+- [x] **Live-as-you-type search (P1a).** Typing searches (debounced ~180 ms) through one dispatch
+      pipeline; Enter searches immediately. Stale-while-revalidate (no blank/flicker), distinct
+      no-results state, field stays editable during load. One re-entrancy invariant
+      (`query != baseQuery`) fixes retry/clear/whitespace re-entry. STOKE re-audit + code-review
+      (reproduced+fixed a stuck-loading bug) + 13 red-first tests. **Deferred next:** keyboard result
+      navigation (needs the focus-vs-TextField spike), then ranking/frecency.

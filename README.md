@@ -116,8 +116,9 @@ Requires the Swift toolchain (Xcode 16+ / Swift 6) on macOS 14+.
 - [x] Term families / aliases — now with an in-app editor (no JSON, applies live)
 - [x] One-click uninstall
 - [x] Editable, persistent search query (stays in the box like Spotlight)
+- [x] Live-as-you-type search (results as you type; Enter searches immediately)
+- [ ] Keyboard result navigation (arrow keys + Enter to open the selection)
 - [ ] Better onboarding & first-run guidance
-- [ ] Live-as-you-type search (results per keystroke; Enter opens the result)
 - [ ] Smoother update-flow animations
 - [ ] More sources beyond files / history / password managers
 - [ ] Signed + notarized releases *(later — Developer ID)*
