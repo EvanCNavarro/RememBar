@@ -34,15 +34,17 @@ More sources will come over time — hence the *"and more."*
 
 There is **no AI and no account.** It's a fast local index search, not a chatbot.
 
-**Term families (aliases).** Create `~/Library/Application Support/RememBar/aliases.json` with groups
-of interchangeable words — then searching any member also finds things named after the others (e.g.
-search `evan` and surface `ECN_*` files):
+**Term families (aliases).** Group interchangeable words so searching any member also finds things
+named after the others (e.g. search `evan` and surface `ECN_*` files). Open the **?** panel → **"…"**
+→ **Term Families…** to add families and words in-app — edits apply to your next search immediately, no
+restart. Families work across files, history, and password managers.
+
+Prefer a file? They're stored as `~/Library/Application Support/RememBar/aliases.json` (an array of
+string arrays); a hand-edit applies on the next launch:
 
 ```json
 [["evan", "ecn", "navarro"], ["mom", "mother"]]
 ```
-
-Edits apply on the next launch. Aliases work across files, history, and password managers.
 
 ## Install
 
@@ -111,7 +113,7 @@ Requires the Swift toolchain (Xcode 16+ / Swift 6) on macOS 14+.
 
 - [x] Sparkle auto-updates (no App Store needed)
 - [x] Custom in-app update experience (RememBar's own UI, EdDSA-signed)
-- [x] Term families / aliases
+- [x] Term families / aliases — now with an in-app editor (no JSON, applies live)
 - [x] One-click uninstall
 - [x] Editable, persistent search query (stays in the box like Spotlight)
 - [ ] Better onboarding & first-run guidance

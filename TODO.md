@@ -55,3 +55,9 @@ Not before v0.5.0. Two problems, one fix — kept here so the rationale isn't lo
 - [x] Crash-on-launch fix (0.3.1) + a build guard so a missing resource can't ship again.
 - [x] All swiftlint warnings resolved; four-subsystem code review; perf benchmarked (all negligible).
 - [x] Persistent, editable search query (0.3.2).
+- [x] 1Password remediation fix (0.3.3) — a blocked password manager reads as a calm hint pointing at
+      the CLI setup, not an amber Full Disk Access warning that never applied.
+- [x] **Term-families management UI + live reload.** In-app editor (chips + add-word, no JSON), reached
+      from the About "…" menu. Shared `AliasCatalog` (lock-guarded, off-main-safe) is read per search,
+      so edits apply live with no restart. Draft state keeps half-built families visible while the
+      engine stays sanitized. STOKE-planned + skeptic-audited + TDD; verified in the real runtime.
