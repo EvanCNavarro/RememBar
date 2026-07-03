@@ -82,6 +82,21 @@ struct PanelRenderTests {
         loadingStore.submit()
         try render(MemoryPanel(store: loadingStore).frame(width: 420).background(Tokens.panel),
                    to: "panel_loading.png")
+
+        // No results — a completed search that found nothing (the distinct showsNoResults state).
+        let noResultsStore = MemorySearchStore(
+            searchProvider: FixedResponseProvider(response: MemorySearchResponse(results: [], sourceStatuses: []))
+        )
+        noResultsStore.inputText = "zzzznotfound"
+        noResultsStore.submit()
+        var noResultsWaited = 0
+        while !noResultsStore.showsNoResults, noResultsWaited < 100 {
+            try await Task.sleep(for: .milliseconds(50))
+            noResultsWaited += 1
+        }
+        #expect(noResultsStore.showsNoResults)
+        try render(MemoryPanel(store: noResultsStore).frame(width: 420).background(Tokens.panel),
+                   to: "panel_no_results.png")
     }
 
     @MainActor

@@ -53,7 +53,9 @@ struct ProviderTests {
 
         let names = try diagnosticEvents(at: diagnostics.logURL).map(\.name)
         #expect(names.contains("search.submit"))
-        #expect(names.contains("search.debounce.fired"))
+        // Enter (submit) searches immediately — it must NOT go through the typing debounce. The
+        // debounced path is exercised by the live-search coalescing tests instead.
+        #expect(!names.contains("search.debounce.fired"))
         #expect(names.contains("search.finished"))
         #expect(names.contains("result.select"))
         #expect(names.contains("result.open.requested"))

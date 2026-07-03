@@ -33,6 +33,28 @@ struct LoadingRows: View {
     }
 }
 
+/// Shown when a search completed but found nothing — a first-class state, visually distinct from
+/// loading, so the panel never reads as a blank/broken list.
+struct NoResultsRow: View {
+    var body: some View {
+        HStack(spacing: Tokens.space) {
+            Image(systemName: "magnifyingglass")
+                .font(.system(size: 13, weight: .semibold))
+                .foregroundStyle(Tokens.quiet)
+                .frame(width: 16)
+            Text("No matches")
+                .font(Tokens.caption)
+                .foregroundStyle(Tokens.muted)
+            Spacer(minLength: 0)
+        }
+        .padding(.horizontal, Tokens.space)
+        .padding(.vertical, Tokens.micro + 2)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .accessibilityElement(children: .combine)
+        .accessibilityLabel("No matches")
+    }
+}
+
 struct ResultsList: View {
     @ObservedObject var store: MemorySearchStore
 

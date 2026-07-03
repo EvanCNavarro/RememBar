@@ -41,6 +41,11 @@ struct MemoryPanel: View {
                     .transition(.asymmetric(insertion: .identity, removal: .opacity))
             }
 
+            if store.showsNoResults {
+                NoResultsRow()
+                    .transition(.opacity)
+            }
+
             // Source status sits BELOW results and shows only actionable problems — results are
             // the point of the panel, not telemetry about which browsers were searched.
             SourceExceptions(store: store)
@@ -64,8 +69,9 @@ private struct CommandField: View {
                 .textFieldStyle(.plain)
                 .font(Tokens.body)
                 .foregroundStyle(Tokens.text)
-                .disabled(store.isLoading)
+                // Never disabled: live search must stay typeable while a query is in flight.
                 .focused($focused)
+                .onChange(of: store.inputText) { store.inputChanged() }
                 .onSubmit(store.submit)
                 .accessibilityLabel("Search files and browser history")
 
@@ -89,7 +95,6 @@ private struct CommandField: View {
                         .opacity(store.isLoading ? 1 : 0)
                 }
             }
-            .disabled(store.isLoading)
             .accessibilityLabel(store.isLoading ? "Searching" : "Search")
         }
         .frame(height: Tokens.control)
@@ -103,11 +108,6 @@ private struct CommandField: View {
         }
         .onAppear {
             focused = true
-        }
-        .onChange(of: store.phase) {
-            if !store.isLoading {
-                focused = true
-            }
         }
     }
 }

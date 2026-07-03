@@ -53,19 +53,34 @@ final class MemorySearchStore: ObservableObject {
     private let searchProvider: any MemorySearching
     private let resultOpener: any MemoryResultOpening
     private let diagnostics: RememBarDiagnostics
+    /// How long typing settles before a live search fires. Injected so tests control timing; 180 ms is
+    /// the launcher sweet spot (Algolia's proven default; well under the 300 ms degradation ceiling).
+    private let searchDebounce: Duration
+    /// Live typing needs at least this many characters before it searches, so a lone character can't
+    /// fire a match-everything query. Enter (`submit()`) bypasses this — an explicit search is honored
+    /// at any length.
+    private static let minLiveQueryLength = 2
 
     init(
         searchProvider: any MemorySearching = CompositeMemorySearchProvider(),
         resultOpener: any MemoryResultOpening = WorkspaceMemoryResultOpener(),
         diagnostics: RememBarDiagnostics = .shared,
         pageSize: Int = 5,
-        resultFetchLimit: Int = 25
+        resultFetchLimit: Int = 25,
+        searchDebounce: Duration = .milliseconds(180)
     ) {
         self.searchProvider = searchProvider
         self.resultOpener = resultOpener
         self.diagnostics = diagnostics
         self.pageSize = max(1, pageSize)
         self.resultFetchLimit = max(self.pageSize, resultFetchLimit)
+        self.searchDebounce = searchDebounce
+    }
+
+    /// True once a search has completed for the current query but found nothing — a distinct state
+    /// from `.loading` and `.idle`, so the panel can show a real "no results" message.
+    var showsNoResults: Bool {
+        phase == .results && results.isEmpty
     }
 
     var isActive: Bool {
@@ -119,20 +134,46 @@ final class MemorySearchStore: ObservableObject {
         currentPage + 1 < totalPages
     }
 
+    /// Explicit search (Enter / the search button): runs immediately, honoring any query length.
     func submit() {
         let query = inputText.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !query.isEmpty else {
             diagnostics.record(RememBarDiagnosticEvent.searchSubmitIgnored, fields: ["reason": "empty"])
             return
         }
-        guard phase != .loading else {
-            diagnostics.record(
-                RememBarDiagnosticEvent.searchSubmitIgnored,
-                fields: ["reason": "loading", "query": query]
-            )
+        dispatchSearch(query: query, immediate: true)
+    }
+
+    /// Live search: called as the field's text changes. Empty input returns to idle; a too-short query
+    /// waits (Enter can still force it); otherwise it schedules a debounced search. Routes through the
+    /// same single dispatch pipeline as `submit()` — there is no second search path.
+    func inputChanged() {
+        let query = inputText.trimmingCharacters(in: .whitespacesAndNewlines)
+        // The single re-entrancy guard: only act when the EFFECTIVE query actually changed. `submit()`,
+        // `retry()`, and `clearSearch()` all write `inputText` programmatically, which re-enters here
+        // via the field's `onChange`; because each leaves `inputText` matching `baseQuery` (or both
+        // empty), those echoes no-op instead of double-dispatching. Also absorbs whitespace-only churn.
+        guard query != baseQuery else { return }
+        guard !query.isEmpty else {
+            clearSearch()
             return
         }
+        guard query.count >= Self.minLiveQueryLength else {
+            // Too short to search live: cancel any pending fire, never strand the loading skeleton with
+            // no in-flight task, and abandon the search identity so returning to a longer query re-runs.
+            searchTask?.cancel()
+            if phase == .loading { phase = .idle }
+            baseQuery = ""
+            return
+        }
+        dispatchSearch(query: query, immediate: false)
+    }
 
+    /// The single search-dispatch authority. `immediate` fires now (Enter); otherwise the search is
+    /// debounced by `searchDebounce`. Latest-wins is guaranteed by cancelling the prior task — the
+    /// stale task bails in `finishSearch()` before committing. Results are NOT blanked here
+    /// (stale-while-revalidate): the current results stay visible until the new response replaces them.
+    private func dispatchSearch(query: String, immediate: Bool) {
         let previousPhase = phase
         let previousRefinementCount = refinements.count
         baseQuery = query
@@ -146,27 +187,30 @@ final class MemorySearchStore: ObservableObject {
                 "refinementCount": "0",
                 "previousRefinementCount": "\(previousRefinementCount)",
                 "previousPhase": "\(previousPhase)",
-                "submitPhase": "\(previousPhase)"
+                "submitPhase": "\(previousPhase)",
+                "immediate": "\(immediate)"
             ]
         )
 
         searchTask?.cancel()
-        // Keep the submitted query in the field (Spotlight-style) so it stays visible + editable.
-        phase = .loading
-        allResults = []
-        results = []
-        sourceStatuses = []
-        currentPage = 0
+        // Only show the loading state when there's nothing to keep on screen (a cold search). During a
+        // revalidate the existing rows stay put, so no skeleton flash between keystrokes.
+        if results.isEmpty {
+            phase = .loading
+        }
         selectedID = nil
 
+        let interval = immediate ? .zero : searchDebounce
         searchTask = Task { [weak self] in
-            self?.recordSearchDebounceScheduled()
-            try? await Task.sleep(for: .milliseconds(620))
-            guard !Task.isCancelled else {
-                self?.recordSearchDebounceCancelled()
-                return
+            if interval > .zero {
+                self?.recordSearchDebounceScheduled()
+                try? await Task.sleep(for: interval)
+                guard !Task.isCancelled else {
+                    self?.recordSearchDebounceCancelled()
+                    return
+                }
+                self?.recordSearchDebounceFired()
             }
-            self?.recordSearchDebounceFired()
             await self?.finishSearch()
         }
     }
