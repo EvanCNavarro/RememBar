@@ -10,12 +10,18 @@ struct MemoryPanel: View {
     var onCheckForUpdates: (() -> Void)?
     /// Injected for the same reason — the app passes the real "move RememBar to the Trash" action.
     var onUninstall: (() -> Void)?
+    /// Opens the Term Families editor window. Injected so this view stays free of window/AppKit concerns.
+    var onManageFamilies: (() -> Void)?
 
     var body: some View {
         VStack(alignment: .leading, spacing: Tokens.space) {
             HStack(spacing: Tokens.space) {
                 CommandField(store: store)
-                AboutControl(onCheckForUpdates: onCheckForUpdates, onUninstall: onUninstall)
+                AboutControl(
+                    onCheckForUpdates: onCheckForUpdates,
+                    onUninstall: onUninstall,
+                    onManageFamilies: onManageFamilies
+                )
             }
 
             if store.showsResultsQuery {

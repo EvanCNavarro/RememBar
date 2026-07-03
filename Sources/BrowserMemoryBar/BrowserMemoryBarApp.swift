@@ -15,9 +15,18 @@ final class RememBarAppDelegate: NSObject, NSApplicationDelegate {
 @main
 struct RememBarApp: App {
     @NSApplicationDelegateAdaptor(RememBarAppDelegate.self) private var appDelegate
-    @StateObject private var store = MemorySearchStore()
+    @StateObject private var store: MemorySearchStore
+    /// The one live term-families catalog — shared between the search providers (which read it per
+    /// search) and the editor window (which writes to it), so an in-app edit applies to the next
+    /// search with no restart.
+    private let aliasCatalog: AliasCatalog
 
     init() {
+        let catalog = AliasCatalog()
+        self.aliasCatalog = catalog
+        _store = StateObject(wrappedValue: MemorySearchStore(
+            searchProvider: CompositeMemorySearchProvider(catalog: catalog)
+        ))
         RememBarDiagnostics.shared.startSession()
         #if DEBUG
         // Dev-only UI gallery. `REMEMBAR_GALLERY=1 swift run RememBar` opens a normal window hosting
@@ -81,7 +90,8 @@ struct RememBarApp: App {
             MemoryPanel(
                 store: store,
                 onCheckForUpdates: { SparkleUpdater.shared.checkForUpdates() },
-                onUninstall: { performUninstall() }
+                onUninstall: { performUninstall() },
+                onManageFamilies: { AliasEditorWindowController.show(catalog: aliasCatalog) }
             )
                 .frame(width: 384)
                 .onAppear {
