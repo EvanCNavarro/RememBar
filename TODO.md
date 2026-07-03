@@ -14,7 +14,19 @@ Improve the experience first, *then* invest in Developer ID. Buckets (each to be
       - Live-as-you-type (results per keystroke; Enter opens the selected result). The query already
         persists in the field as of 0.3.2, so this is the next step toward the full launcher feel.
       - Ranking / refinement improvements.
-- [ ] **More sources** beyond files / browser history / 1Password.
+- [ ] **More sources** beyond files / browser history / 1Password. The line: index searchable
+      *metadata / names*, never secret *values* or file *contents*. Ranked by value-to-effort:
+      - **Browser bookmarks** *(next — no new access/permission, fully testable)*. Firefox: same
+        `places.sqlite` we already read (`moz_bookmarks`); Chrome/Safari: a sibling file in the
+        app-data path we already reach. Natural extension of the history source.
+      - **Applications** *(easy — `mdfind kMDItemKind == 'Application'`)*. Launcher table-stakes,
+        no new permission.
+      - **Contacts** and **Calendar** *(after onboarding)* — high "half-remember" value (names/emails,
+        meeting titles) but each adds its own TCC permission prompt, so they ride the onboarding wave.
+      - **Bitwarden** — same clean metadata CLI shape as 1Password (`bw list items`); deferred, no
+        local install to test against yet.
+      - *Deliberately out of scope:* file **contents** / full-text (crosses names-not-contents; Spotlight
+        already does it) and Messages/Mail **bodies** (secret-adjacent content — metadata only, if ever).
 
 ## v0.5.0 — Developer ID signing + notarization (deferred by decision)
 Not before v0.5.0. Two problems, one fix — kept here so the rationale isn't lost:
