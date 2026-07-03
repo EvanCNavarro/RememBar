@@ -98,11 +98,20 @@ private struct SourceExceptionRow: View {
     let status: MemorySearchSourceStatus
     let action: () -> Void
 
+    // A blocked password manager is an optional, self-configured integration — not a permission the
+    // user did anything wrong to lose. It renders as a calm hint (quiet grey, `key` glyph, neutral
+    // chrome), reserving the amber warning treatment for genuine, user-fixable access problems
+    // (e.g. Full Disk Access) so a real warning still reads as one.
+    private var isHint: Bool { status.isPasswordManager && status.state == .blocked }
+    private var accent: Color { isHint ? Tokens.quiet : Tokens.warning }
+    private var pillTint: Color { isHint ? Tokens.muted : Tokens.warning }
+    private var iconName: String { isHint ? "key" : status.systemImageName }
+
     var body: some View {
         HStack(spacing: Tokens.space) {
-            Image(systemName: status.systemImageName)
+            Image(systemName: iconName)
                 .font(.system(size: 13, weight: .semibold))
-                .foregroundStyle(Tokens.warning)
+                .foregroundStyle(accent)
                 .frame(width: 16)
 
             VStack(alignment: .leading, spacing: 1) {
@@ -120,7 +129,7 @@ private struct SourceExceptionRow: View {
             Spacer(minLength: Tokens.space)
 
             if let remediation = status.remediation {
-                ActionPillButton(title: remediation.actionLabel, action: action)
+                ActionPillButton(title: remediation.actionLabel, tint: pillTint, action: action)
                     .accessibilityLabel("\(remediation.actionLabel) for \(status.sourceName)")
             }
         }
@@ -128,10 +137,10 @@ private struct SourceExceptionRow: View {
         .padding(.vertical, Tokens.micro + 2)
         .background(
             RoundedRectangle(cornerRadius: Tokens.radius, style: .continuous)
-                .fill(Tokens.warning.opacity(0.10))
+                .fill(isHint ? Tokens.row : Tokens.warning.opacity(0.10))
                 .overlay(
                     RoundedRectangle(cornerRadius: Tokens.radius, style: .continuous)
-                        .stroke(Tokens.warning.opacity(0.4), lineWidth: 1)
+                        .stroke(isHint ? Tokens.line : Tokens.warning.opacity(0.4), lineWidth: 1)
                 )
         )
         .accessibilityElement(children: .combine)

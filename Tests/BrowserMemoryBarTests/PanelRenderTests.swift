@@ -43,6 +43,9 @@ struct PanelRenderTests {
                 id: "files", sourceName: "Files", state: .failed, detail: "Could not read this source"),
             MemorySearchSourceStatus(
                 id: "safari", sourceName: "Safari", state: .blocked, detail: "Permission required"),
+            MemorySearchSourceStatus(
+                id: MemorySearchSourceStatus.onePasswordID, sourceName: "1Password",
+                state: .blocked, detail: "Unlock or sign in to 1Password"),
             MemorySearchSourceStatus(id: "chrome", sourceName: "Chrome", state: .searched, detail: "522 visits")
         ]
         let store = MemorySearchStore(

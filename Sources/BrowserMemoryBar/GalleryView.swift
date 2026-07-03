@@ -215,6 +215,8 @@ private enum GallerySampleData {
         let statuses: [MemorySearchSourceStatus] = [
             MemorySearchSourceStatus(id: "safari", sourceName: "Safari", state: .blocked,
                                      detail: "Permission required"),
+            MemorySearchSourceStatus(id: MemorySearchSourceStatus.onePasswordID, sourceName: "1Password",
+                                     state: .blocked, detail: "Unlock or sign in to 1Password"),
             MemorySearchSourceStatus(id: "chrome", sourceName: "Chrome", state: .searched, detail: "522 visits")
         ]
         return MemorySearchResponse(results: results, sourceStatuses: statuses)

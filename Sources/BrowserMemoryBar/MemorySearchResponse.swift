@@ -30,8 +30,9 @@ struct MemorySearchSourceStatus: Identifiable, Equatable, Sendable {
             return SensitivePathPolicy.redactingSensitivePaths(in: detail)
         case .blocked:
             // A blocked password manager isn't a macOS permission — it's the manager's own lock /
-            // sign-in / CLI-integration state. Keep its own guidance instead of the TCC-flavored copy.
-            return isPasswordManager ? SensitivePathPolicy.redactingSensitivePaths(in: detail) : "Permission required"
+            // sign-in / CLI-integration state. Show its own (fixed, path-free) guidance verbatim; do
+            // NOT run it through the path redactor, which would nuke the literal word "password".
+            return isPasswordManager ? detail : "Permission required"
         case .unavailable:
             return detail.contains("/")
                 ? "Source is unavailable"
