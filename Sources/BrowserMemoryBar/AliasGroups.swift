@@ -62,6 +62,13 @@ struct AliasGroups: Equatable, Sendable {
         return groups.filter { $0.contains(lower) }.flatMap { $0 }
     }
 
+    /// The sanitized groups, for an editor to render/round-trip. This is the model's real state —
+    /// lowercased, ≥2-char members, ≥2-member groups — NOT the user's raw keystrokes (an editor keeps
+    /// its own draft buffer for in-progress input; see the term-families UI).
+    var families: [[String]] {
+        groups
+    }
+
     /// Load alias groups from `aliases.json` (an array of string arrays). Missing or malformed →
     /// `.empty`, so a bad config never breaks search.
     static func load(from url: URL) -> AliasGroups {
@@ -70,5 +77,13 @@ struct AliasGroups: Equatable, Sendable {
             return .empty
         }
         return AliasGroups(groups: raw)
+    }
+
+    /// Persist the sanitized groups to `aliases.json` as the same array-of-arrays `load(from:)` reads.
+    /// Written atomically so a crash mid-save can't leave a truncated/half-written config that would
+    /// silently degrade to `.empty` on next launch.
+    func save(to url: URL) throws {
+        let data = try JSONEncoder().encode(groups)
+        try data.write(to: url, options: .atomic)
     }
 }

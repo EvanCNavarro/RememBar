@@ -1,22 +1,37 @@
 import Foundation
 
 struct CompositeMemorySearchProvider: MemorySearching, Sendable {
-    private let providers: [any MemorySearching]
+    /// When set, these fixed providers are used verbatim (test injection) and the catalog/factory are
+    /// bypassed. When nil, providers are built PER SEARCH from `catalog.snapshot` so an in-app edit to
+    /// the term families is live on the very next search — no app restart, no provider rebuild.
+    private let staticProviders: [any MemorySearching]?
+    private let catalog: AliasCatalog
+    private let makeProviders: @Sendable (AliasGroups) -> [any MemorySearching]
     private let diagnostics: RememBarDiagnostics
 
-    init(providers: [any MemorySearching]? = nil, diagnostics: RememBarDiagnostics = .shared) {
+    init(
+        providers: [any MemorySearching]? = nil,
+        catalog: AliasCatalog = AliasCatalog(),
+        diagnostics: RememBarDiagnostics = .shared,
+        providerFactory: (@Sendable (AliasGroups) -> [any MemorySearching])? = nil
+    ) {
+        self.staticProviders = providers
+        self.catalog = catalog
         self.diagnostics = diagnostics
-        // Load the user's alias families once per launch (absent/malformed → no expansion).
-        let aliases = AliasGroups.load(from: RememBarPaths.current.aliasesURL)
-        self.providers = providers ?? [
-            SpotlightFileSearchProvider(diagnostics: diagnostics, aliases: aliases),
-            LocalHistorySearchProvider(diagnostics: diagnostics, aliases: aliases),
-            OnePasswordSearchProvider(diagnostics: diagnostics, aliases: aliases)
-        ]
+        self.makeProviders = providerFactory ?? { aliases in
+            [
+                SpotlightFileSearchProvider(diagnostics: diagnostics, aliases: aliases),
+                LocalHistorySearchProvider(diagnostics: diagnostics, aliases: aliases),
+                OnePasswordSearchProvider(diagnostics: diagnostics, aliases: aliases)
+            ]
+        }
     }
 
     func searchResponse(query: String, refinements: [String], limit: Int) async -> MemorySearchResponse {
         let startedAt = Date()
+        // Read the live families ONCE per search (thread-safe snapshot) and build providers from it,
+        // unless fixed providers were injected. This is the live-reload seam.
+        let providers = staticProviders ?? makeProviders(catalog.snapshot)
         diagnostics.record(
             RememBarDiagnosticEvent.compositeSearchStarted,
             fields: [

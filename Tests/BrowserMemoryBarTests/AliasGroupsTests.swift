@@ -73,6 +73,52 @@ struct AliasGroupsTests {
         #expect(AliasGroups.load(from: dir.appendingPathComponent("missing.json")) == .empty)
     }
 
+    // MARK: P0 — serialization (the editor needs to READ groups back and SAVE them)
+
+    @Test("families accessor exposes the sanitized groups for an editor to render")
+    func familiesAccessor() {
+        // lowercased, 1-char member dropped, <2-member group dropped — mirrors init sanitization
+        let sut = AliasGroups(groups: [["Evan", "ECN", "x"], ["mom", "mother"], ["solo"]])
+        #expect(sut.families == [["evan", "ecn"], ["mom", "mother"]])
+        #expect(AliasGroups.empty.families == [])
+    }
+
+    @Test("save then load round-trips through disk (sanitized value preserved)")
+    func saveLoadRoundTrip() throws {
+        let dir = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString, isDirectory: true)
+        try FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
+        defer { try? FileManager.default.removeItem(at: dir) }
+        let url = dir.appendingPathComponent("aliases.json")
+
+        let original = AliasGroups(groups: [["evan", "ecn", "navarro"], ["mom", "mother"]])
+        try original.save(to: url)
+        #expect(AliasGroups.load(from: url) == original)
+    }
+
+    @Test("save writes a valid JSON array-of-arrays (compatible with the existing on-disk format)")
+    func saveWritesArrayOfArrays() throws {
+        let dir = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString, isDirectory: true)
+        try FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
+        defer { try? FileManager.default.removeItem(at: dir) }
+        let url = dir.appendingPathComponent("aliases.json")
+
+        try AliasGroups(groups: [["evan", "ecn"]]).save(to: url)
+        let raw = try JSONDecoder().decode([[String]].self, from: Data(contentsOf: url))
+        #expect(raw == [["evan", "ecn"]])
+    }
+
+    @Test("save overwrites prior contents cleanly (no stale bytes appended)")
+    func saveOverwrites() throws {
+        let dir = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString, isDirectory: true)
+        try FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
+        defer { try? FileManager.default.removeItem(at: dir) }
+        let url = dir.appendingPathComponent("aliases.json")
+
+        try AliasGroups(groups: [["alpha", "beta"], ["gamma", "delta"]]).save(to: url)
+        try AliasGroups(groups: [["one", "two"]]).save(to: url) // shorter — would leave tail if non-atomic overwrite
+        #expect(AliasGroups.load(from: url) == AliasGroups(groups: [["one", "two"]]))
+    }
+
     @Test("the file query plan expands entity terms AND the mdfind query through aliases")
     func planIntegration() {
         let aliases = AliasGroups(groups: [["evan", "ecn"]])

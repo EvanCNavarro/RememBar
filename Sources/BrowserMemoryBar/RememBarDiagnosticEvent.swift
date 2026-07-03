@@ -48,6 +48,11 @@ enum RememBarDiagnosticEvent {
     static let historySourceReadFailed = "history.source.read.failed"
     static let onePasswordProviderFailed = "onepassword.provider.failed"
 
+    // Term-families (alias) catalog — in-app edits + live reload.
+    static let aliasCatalogUpdated = "alias.catalog.updated"
+    static let aliasCatalogReloaded = "alias.catalog.reloaded"
+    static let aliasCatalogSaveFailed = "alias.catalog.save_failed"
+
     // External process and thumbnail boundaries.
     static let mdfindSearchCancelRequested = "mdfind.search.cancel.requested"
     static let mdfindProcessCancelledBeforeLaunch = "mdfind.process.cancelled_before_launch"
