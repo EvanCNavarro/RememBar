@@ -26,11 +26,15 @@ struct SourceStatusTests {
     @Test("blocked offers grant-access; failed offers retry; non-exceptions offer nothing")
     func remediationMapping() {
         #expect(status("Safari", .blocked).remediation == .grantFullDiskAccess)
+        // A blocked password manager is its own CLI auth, NOT a macOS permission — so it must offer
+        // CLI setup guidance, never Full Disk Access. Keyed on the real source id ("1password").
+        #expect(status(MemorySearchSourceStatus.onePasswordID, .blocked).remediation == .enablePasswordManagerCLI)
         #expect(status("Files", .failed).remediation == .retrySearch)
         #expect(status("Chrome", .searched).remediation == nil)
-        #expect(status("1Password", .unavailable).remediation == nil)
+        #expect(status(MemorySearchSourceStatus.onePasswordID, .unavailable).remediation == nil)
         #expect(status("x", .skipped).remediation == nil)
         #expect(SourceRemediation.grantFullDiskAccess.actionLabel == "Grant access")
+        #expect(SourceRemediation.enablePasswordManagerCLI.actionLabel == "How to enable")
         #expect(SourceRemediation.retrySearch.actionLabel == "Retry")
     }
 }

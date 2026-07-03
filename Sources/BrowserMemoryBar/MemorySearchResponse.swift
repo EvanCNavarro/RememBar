@@ -29,7 +29,9 @@ struct MemorySearchSourceStatus: Identifiable, Equatable, Sendable {
         case .searched, .skipped:
             return SensitivePathPolicy.redactingSensitivePaths(in: detail)
         case .blocked:
-            return "Permission required"
+            // A blocked password manager isn't a macOS permission — it's the manager's own lock /
+            // sign-in / CLI-integration state. Keep its own guidance instead of the TCC-flavored copy.
+            return isPasswordManager ? SensitivePathPolicy.redactingSensitivePaths(in: detail) : "Permission required"
         case .unavailable:
             return detail.contains("/")
                 ? "Source is unavailable"
@@ -102,22 +104,35 @@ extension MemorySearchSourceStatus {
 /// What the user can DO about a problem source. The single authority — the view renders a button
 /// from this and the store dispatches on it; neither re-derives the mapping.
 enum SourceRemediation: Equatable, Sendable {
-    case grantFullDiskAccess   // open Settings → Privacy → Full Disk Access (e.g. Safari history)
-    case retrySearch           // re-run the current query (e.g. a transient file-search failure)
+    case grantFullDiskAccess       // open Settings → Privacy → Full Disk Access (e.g. Safari history)
+    case enablePasswordManagerCLI  // open the password manager's CLI setup docs (its own auth, not TCC)
+    case retrySearch               // re-run the current query (e.g. a transient file-search failure)
 
     var actionLabel: String {
         switch self {
         case .grantFullDiskAccess: return "Grant access"
+        case .enablePasswordManagerCLI: return "How to enable"
         case .retrySearch: return "Retry"
         }
     }
 }
 
 extension MemorySearchSourceStatus {
+    /// Source id for the 1Password provider — shared so the provider and the remediation mapping
+    /// can't drift. It's the one blocked source that is NOT a macOS TCC permission.
+    static let onePasswordID = "1password"
+
+    /// A password manager is reached through its own CLI (`op`), so a "blocked" state means the
+    /// manager is locked / signed out / has CLI integration off — none of which Full Disk Access
+    /// can fix. Keyed on the stable source id the provider sets.
+    var isPasswordManager: Bool { id == Self.onePasswordID }
+
     /// The action offered for this source, or nil when there is nothing to act on.
     var remediation: SourceRemediation? {
         switch state {
-        case .blocked: return .grantFullDiskAccess
+        // Route password-manager blocks to CLI setup guidance, not Full Disk Access — sending the
+        // user to a macOS permission pane for a 1Password sign-in problem is a category error.
+        case .blocked: return isPasswordManager ? .enablePasswordManagerCLI : .grantFullDiskAccess
         case .failed: return .retrySearch
         case .searched, .skipped, .unavailable: return nil
         }

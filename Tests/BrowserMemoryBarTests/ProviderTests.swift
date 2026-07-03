@@ -124,6 +124,21 @@ struct ProviderTests {
         }
     }
 
+    @MainActor
+    @Test("password-manager remediation opens 1Password CLI docs, never Full Disk Access")
+    func passwordManagerRemediationOpensDocs() {
+        let opener = RecordingMemoryResultOpener()
+        let store = MemorySearchStore(searchProvider: StaticMemorySearchProvider(results: []), resultOpener: opener)
+        store.performRemediation(.enablePasswordManagerCLI)
+        #expect(opener.opened.count == 1)
+        if case .systemSettings(let url)? = opener.opened.first?.target {
+            #expect(url != FileSearchAccessIssue.fullDiskAccessSettingsURL)
+            #expect(url.host == "developer.1password.com")
+        } else {
+            Issue.record("expected a URL open for the CLI-setup remediation")
+        }
+    }
+
     @Test("browser identities preserve source app handoff data")
     func browserIdentity() {
         #expect(BrowserRef.chrome.bundleIdentifier == "com.google.Chrome")

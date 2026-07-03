@@ -229,6 +229,16 @@ final class MemorySearchStore: ObservableObject {
                 systemSettingsURL: FileSearchAccessIssue.fullDiskAccessSettingsURL
             )
             open(target)
+        case .enablePasswordManagerCLI:
+            // Not a macOS permission — 1Password is read via its `op` CLI, which needs the desktop
+            // app's "Integrate with 1Password CLI" turned on (and an unlocked vault). Point at the docs.
+            let target = MemoryResult(
+                id: "remediation.passwordManagerCLI",
+                title: "Enable 1Password CLI",
+                detail: "How to let RememBar read 1Password item titles",
+                systemSettingsURL: URL(string: "https://developer.1password.com/docs/cli/get-started/")!
+            )
+            open(target)
         case .retrySearch:
             retry()
         }

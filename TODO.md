@@ -25,6 +25,13 @@ Not before v0.5.0. Two problems, one fix — kept here so the rationale isn't lo
    Full Disk Access after *every* update. A Developer ID cert makes the requirement stable (team +
    bundle ID) so grants persist. ($99/yr Apple Developer Program; the CI plumbing can be prepped ahead
    of enrolling.)
+3. **Reliable 1Password results.** RememBar reads 1Password by spawning its `op` CLI. `op` authorizes
+   the *calling app* via the desktop app's "Integrate with 1Password CLI" biometric prompt, which is
+   bound to the caller's code signature. An ad-hoc-signed app has an unstable cdhash, so 1Password
+   can't hold a durable trust for it — same root cause as the TCC re-grant. Until Developer ID, the
+   1Password source will often show blocked even when `op` works in a Terminal. The v0.3.3 fix stopped
+   sending those users to the wrong pane (Full Disk Access) and points them at the CLI setup docs
+   instead, but *durable* password-manager results are gated here.
 
 ## Considered and deferred (with rationale)
 - [ ] **Sensitive-path policy hardening** — gated on threat model; mdfind doesn't surface dot-dir

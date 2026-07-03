@@ -92,7 +92,7 @@ struct OnePasswordSearchProvider: MemorySearching, Sendable {
 
     private static func status(state: MemorySearchSourceStatus.State, detail: String) -> MemorySearchSourceStatus {
         MemorySearchSourceStatus(
-            id: "1password",
+            id: MemorySearchSourceStatus.onePasswordID,
             sourceName: "1Password",
             state: state,
             detail: detail
