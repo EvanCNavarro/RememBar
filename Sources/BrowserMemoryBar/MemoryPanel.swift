@@ -39,6 +39,10 @@ struct MemoryPanel: View {
                     // Instant in (the rows do their own staggered entrance); fade out on clear so the
                     // panel flushes gracefully instead of popping to empty.
                     .transition(.asymmetric(insertion: .identity, removal: .opacity))
+                    // Dim while a re-search runs so stale rows read as "updating", not as matches for
+                    // the query you're now typing.
+                    .opacity(store.isSearching ? 0.45 : 1)
+                    .animation(.easeInOut(duration: 0.15), value: store.isSearching)
             }
 
             if store.showsNoResults {
@@ -58,6 +62,10 @@ struct MemoryPanel: View {
 private struct CommandField: View {
     @ObservedObject var store: MemorySearchStore
     @FocusState private var focused: Bool
+
+    /// A search is executing (a live re-search over existing results, or a cold search) — drive the
+    /// bar's spinner off this so editing an already-searched query never looks frozen.
+    private var searchInFlight: Bool { store.isSearching || store.isLoading }
 
     var body: some View {
         HStack(spacing: Tokens.space) {
@@ -88,14 +96,14 @@ private struct CommandField: View {
                 ZStack {
                     Text("↵")
                         .font(.system(size: 15, weight: .medium))
-                        .opacity(store.isLoading ? 0 : 1)
+                        .opacity(searchInFlight ? 0 : 1)
 
                     ProgressView()
                         .controlSize(.mini)
-                        .opacity(store.isLoading ? 1 : 0)
+                        .opacity(searchInFlight ? 1 : 0)
                 }
             }
-            .accessibilityLabel(store.isLoading ? "Searching" : "Search")
+            .accessibilityLabel(searchInFlight ? "Searching" : "Search")
         }
         .frame(height: Tokens.control)
         .padding(.leading, Tokens.space)

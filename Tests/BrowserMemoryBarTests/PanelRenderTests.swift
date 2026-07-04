@@ -19,6 +19,20 @@ private struct SlowProvider: MemorySearching {
     }
 }
 
+/// Returns results on the first search, then hangs — so the panel can be frozen mid *re-search* with
+/// results still on screen (`isSearching == true`) to capture the dim + spinner feedback.
+private final class ResultsThenHangProvider: MemorySearching, @unchecked Sendable {
+    let response: MemorySearchResponse
+    private let lock = NSLock()
+    private var calls = 0
+    init(response: MemorySearchResponse) { self.response = response }
+    func searchResponse(query: String, refinements: [String], limit: Int) async -> MemorySearchResponse {
+        let n = lock.withLock { calls += 1; return calls }
+        if n > 1 { try? await Task.sleep(for: .seconds(60)) }
+        return response
+    }
+}
+
 @Suite("PanelRender")
 struct PanelRenderTests {
     /// Renders the REAL production MemoryPanel offscreen to a PNG so the layout can be reviewed
@@ -91,6 +105,24 @@ struct PanelRenderTests {
         loadingStore.submit()
         try render(MemoryPanel(store: loadingStore).frame(width: 420).background(Tokens.panel),
                    to: "panel_loading.png")
+
+        // Re-searching over existing results — the state that used to look frozen: results stay but
+        // dim, and the bar shows a spinner (isSearching == true).
+        let researchStore = MemorySearchStore(
+            searchProvider: ResultsThenHangProvider(
+                response: MemorySearchResponse(results: results, sourceStatuses: []))
+        )
+        researchStore.inputText = "web"
+        researchStore.submit()
+        var w1 = 0
+        while researchStore.results.isEmpty, w1 < 100 { try await Task.sleep(for: .milliseconds(50)); w1 += 1 }
+        researchStore.inputText = "web apps"   // triggers the hanging second search
+        researchStore.submit()
+        var w2 = 0
+        while !researchStore.isSearching, w2 < 100 { try await Task.sleep(for: .milliseconds(50)); w2 += 1 }
+        #expect(researchStore.isSearching && !researchStore.results.isEmpty)
+        try render(MemoryPanel(store: researchStore).frame(width: 420).background(Tokens.panel),
+                   to: "panel_researching.png")
 
         // No results — a completed search that found nothing (the distinct showsNoResults state).
         let noResultsStore = MemorySearchStore(

@@ -178,6 +178,53 @@ struct LiveSearchTests {
         #expect(phaseOK)
     }
 
+    @Test("overriding the query over existing results signals isSearching, then clears")
+    func revalidateSignalsSearchActivity() async {
+        // A slow provider so the in-flight window is observable — this is the feedback that was missing
+        // (results stayed on screen with NO indication a new search was running).
+        let response = MemorySearchResponse(results: [sampleResult()], sourceStatuses: [])
+        let store = await MainActor.run {
+            MemorySearchStore(
+                searchProvider: DelayedResponseMemorySearchProvider(delay: .milliseconds(150), response: response)
+            )
+        }
+        await MainActor.run { store.inputText = "web"; store.submit() }
+        _ = await eventually { await MainActor.run { store.phase == .results && !store.results.isEmpty } }
+        let settledQuiet = await MainActor.run { !store.isSearching }
+        #expect(settledQuiet)
+
+        // Override the text — results stay (SWR) but isSearching must be true so the UI can show it.
+        await MainActor.run { store.inputText = "different query"; store.submit() }
+        let signalsWhileResultsShow = await eventually {
+            await MainActor.run { store.isSearching && !store.results.isEmpty }
+        }
+        #expect(signalsWhileResultsShow)
+        // And it clears once the search lands.
+        let cleared = await eventually { await MainActor.run { !store.isSearching } }
+        #expect(cleared)
+    }
+
+    @Test("isSearching is false in idle, too-short and cleared states")
+    func isSearchingFalseWhenNotSearching() async {
+        let provider = RequestRecordingSearchProvider()
+        let store = await MainActor.run {
+            MemorySearchStore(searchProvider: provider, searchDebounce: .milliseconds(5))
+        }
+        let idle = await MainActor.run { !store.isSearching }
+        #expect(idle)
+        let tooShort = await MainActor.run { () -> Bool in
+            store.inputText = "a"; store.inputChanged()
+            return !store.isSearching
+        }
+        #expect(tooShort)
+        let afterClear = await MainActor.run { () -> Bool in
+            store.inputText = "web apps"; store.submit()
+            store.clearSearch()
+            return !store.isSearching
+        }
+        #expect(afterClear)
+    }
+
     @Test("empty results land in a distinct no-results state")
     func noResultsDistinctState() async {
         let store = await MainActor.run {

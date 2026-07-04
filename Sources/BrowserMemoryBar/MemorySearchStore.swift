@@ -43,6 +43,11 @@ final class MemorySearchStore: ObservableObject {
     @Published private(set) var results: [MemoryResult] = []
     @Published private(set) var sortMode: SortMode = .relevance
     @Published private(set) var sourceStatuses: [MemorySearchSourceStatus] = []
+    /// True while a search is actually executing (post-debounce / on Enter), independent of whether
+    /// there are results on screen. Lets the UI signal a live re-search — spinner + dimmed stale rows
+    /// — instead of looking frozen when you edit a query that already has results ("stale-while-
+    /// revalidate"). Not set during the debounce wait, so it doesn't flash on every keystroke.
+    @Published private(set) var isSearching = false
     @Published var selectedID: MemoryResult.ID?
 
     private var searchTask: Task<Void, Never>?
@@ -162,6 +167,7 @@ final class MemorySearchStore: ObservableObject {
             // Too short to search live: cancel any pending fire, never strand the loading skeleton with
             // no in-flight task, and abandon the search identity so returning to a longer query re-runs.
             searchTask?.cancel()
+            isSearching = false
             if phase == .loading { phase = .idle }
             baseQuery = ""
             return
@@ -226,6 +232,7 @@ final class MemorySearchStore: ObservableObject {
         )
         searchTask?.cancel()
         searchTask = nil
+        isSearching = false
         inputText = ""
         baseQuery = ""
         refinements = []
@@ -313,6 +320,10 @@ final class MemorySearchStore: ObservableObject {
     }
 
     private func finishSearch() async {
+        // The search is now actually executing (past any debounce) — signal it so the UI can show a
+        // live re-search even when stale results stay on screen. Left untouched in the cancelled path
+        // below so a newer in-flight search keeps the signal; the committing search clears it.
+        isSearching = true
         let provider = searchProvider
         let query = baseQuery
         let activeRefinements = refinements
@@ -352,6 +363,7 @@ final class MemorySearchStore: ObservableObject {
         currentPage = 0
         applyCurrentPage()
         phase = .results
+        isSearching = false
         diagnostics.record(
             RememBarDiagnosticEvent.searchFinished,
             fields: searchFinishedFields(
