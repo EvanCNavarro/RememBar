@@ -1,51 +1,87 @@
 import AppKit
 import SwiftUI
 
-/// Opens (and retains) the Term Families editor in a real titled window.
+/// A floating panel that CAN take key focus — required so the editor's `TextField`s accept typing.
+/// A borderless/nonactivating panel won't become key by default; these overrides opt it in.
+final class FloatingEditorPanel: NSPanel {
+    override var canBecomeKey: Bool { true }
+    override var canBecomeMain: Bool { true }
+    /// Escape → close, the standard cancel affordance (no key-monitor needed).
+    var onCancel: (() -> Void)?
+    override func cancelOperation(_ sender: Any?) { onCancel?() }
+}
+
+/// Presents the Term Families editor as a lightweight, tooltip-style floating panel.
 ///
-/// RememBar is an accessory app (`LSUIElement`) with no Dock icon and no app menu, so a SwiftUI
-/// `Settings` scene / ⌘, is unreliable and a `SettingsLink`-opened window would come up behind other
-/// apps. So we open an `NSWindow` ourselves and do the activation dance the rest of the app already
-/// uses for accessory windows (see `AboutView`/gallery): flip to `.regular` + `activate` so the window
-/// comes forward and takes focus, then restore `.accessory` on close so no Dock icon lingers.
+/// NOT a `.popover` like the About "?": a SwiftUI popover nested in a `MenuBarExtra(.window)` renders
+/// in a child window that must become key for its text fields to accept typing — but the menu-bar
+/// window dismisses the instant it resigns key, taking the popover with it. (The "?" popover survives
+/// only because it has no text fields.) A **non-activating `NSPanel`** is the surface that's lighter
+/// than a full window — no Dock icon, no `NSApp` activation-policy juggling on this `LSUIElement`
+/// app — yet, with `canBecomeKey` overridden, can still host editable fields.
 @MainActor
 enum AliasEditorWindowController {
-    private static var window: NSWindow?
-    private static var delegate: WindowDelegate?
+    private static var panel: FloatingEditorPanel?
+    private static var monitors: [Any] = []
 
     static func show(catalog: AliasCatalog) {
-        if let existing = window {
+        if let existing = panel {
             existing.makeKeyAndOrderFront(nil)
-            NSApp.activate(ignoringOtherApps: true)
             return
         }
-        NSApp.setActivationPolicy(.regular)
-        let win = NSWindow(
+        // .nonactivatingPanel MUST be set at init (toggling it later leaves the WindowServer's
+        // activation tag stale — a panel that looks focused but silently drops keystrokes).
+        let created = FloatingEditorPanel(
             contentRect: NSRect(x: 0, y: 0, width: 460, height: 420),
-            styleMask: [.titled, .closable, .resizable, .miniaturizable],
+            styleMask: [.nonactivatingPanel, .titled, .fullSizeContentView, .closable],
             backing: .buffered,
             defer: false
         )
-        win.title = "Term Families"
-        win.isReleasedWhenClosed = false
-        win.contentView = NSHostingView(rootView: AliasEditorView(model: AliasEditorModel(catalog: catalog)))
-        win.setContentSize(NSSize(width: 460, height: 420))
-        win.center()
-        let del = WindowDelegate()
-        win.delegate = del
-        delegate = del
-        win.makeKeyAndOrderFront(nil)
-        NSApp.activate(ignoringOtherApps: true)
-        window = win
+        created.titleVisibility = .hidden
+        created.titlebarAppearsTransparent = true
+        created.isMovableByWindowBackground = true
+        created.level = .floating
+        created.isReleasedWhenClosed = false
+        created.hidesOnDeactivate = false
+        created.backgroundColor = NSColor(Tokens.panel)
+        for button in [NSWindow.ButtonType.closeButton, .miniaturizeButton, .zoomButton] {
+            created.standardWindowButton(button)?.isHidden = true
+        }
+        created.onCancel = { AliasEditorWindowController.close() }
+        created.contentView = NSHostingView(
+            rootView: AliasEditorView(model: AliasEditorModel(catalog: catalog))
+        )
+        created.setContentSize(NSSize(width: 460, height: 420))
+        created.center()
+        created.makeKeyAndOrderFront(nil)
+        panel = created
+        installDismissMonitors()
     }
 
-    /// Restores the accessory (menu-bar-only) activation policy when the editor closes, so RememBar
-    /// doesn't leave a Dock icon behind after the window is dismissed.
-    private final class WindowDelegate: NSObject, NSWindowDelegate {
-        func windowWillClose(_ notification: Notification) {
-            AliasEditorWindowController.window = nil
-            AliasEditorWindowController.delegate = nil
-            NSApp.setActivationPolicy(.accessory)
+    static func close() {
+        panel?.orderOut(nil)
+        panel = nil
+        removeDismissMonitors()
+    }
+
+    /// Tooltip-style dismissal: a mouse-down anywhere outside the panel closes it (Escape is handled
+    /// by the panel's `cancelOperation`). Global monitor catches other apps / the desktop; local
+    /// monitor catches clicks in our own surfaces (e.g. the menu-bar icon).
+    private static func installDismissMonitors() {
+        let global = NSEvent.addGlobalMonitorForEvents(matching: [.leftMouseDown, .rightMouseDown]) { _ in
+            DispatchQueue.main.async { @MainActor in AliasEditorWindowController.close() }
         }
+        let local = NSEvent.addLocalMonitorForEvents(matching: [.leftMouseDown, .rightMouseDown]) { event in
+            MainActor.assumeIsolated {
+                if event.window !== panel { AliasEditorWindowController.close() }
+            }
+            return event
+        }
+        monitors = [global, local].compactMap { $0 }
+    }
+
+    private static func removeDismissMonitors() {
+        for monitor in monitors { NSEvent.removeMonitor(monitor) }
+        monitors = []
     }
 }
