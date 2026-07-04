@@ -27,8 +27,8 @@ private final class ResultsThenHangProvider: MemorySearching, @unchecked Sendabl
     private var calls = 0
     init(response: MemorySearchResponse) { self.response = response }
     func searchResponse(query: String, refinements: [String], limit: Int) async -> MemorySearchResponse {
-        let n = lock.withLock { calls += 1; return calls }
-        if n > 1 { try? await Task.sleep(for: .seconds(60)) }
+        let callNumber = lock.withLock { calls += 1; return calls }
+        if callNumber > 1 { try? await Task.sleep(for: .seconds(60)) }
         return response
     }
 }
@@ -39,6 +39,8 @@ struct PanelRenderTests {
     /// without driving the live menu-bar app. Not a pass/fail assertion of pixels — a visual proof.
     @MainActor
     @Test("render MemoryPanel (results + exceptions) to a PNG")
+    // A visual-proof harness that renders many panel states in sequence — length is inherent.
+    // swiftlint:disable:next function_body_length
     func renderPanel() async throws {
         let results: [MemoryResult] = [
             MemoryResult(fileURL: URL(fileURLWithPath: "/Users/example/Downloads/sample-notes.md"),
