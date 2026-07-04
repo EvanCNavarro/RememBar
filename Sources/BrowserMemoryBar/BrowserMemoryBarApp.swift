@@ -36,6 +36,13 @@ struct RememBarApp: App {
             DispatchQueue.main.async { GalleryWindowController.show() }
         }
 
+        // Dev hook: `REMEMBAR_OPEN_SETTINGS=1 swift run RememBar` opens the REAL settings window on
+        // launch (the actual SettingsWindowController path), so it can be inspected/driven end-to-end
+        // without clicking the menu-bar item. DEBUG-only.
+        if ProcessInfo.processInfo.environment["REMEMBAR_OPEN_SETTINGS"] != nil {
+            DispatchQueue.main.async { SettingsWindowController.show(catalog: catalog) }
+        }
+
         // Dev/demo hook (env-gated, no-op unless set): REMEMBAR_AUTOCHECK=1 auto-triggers "Check for
         // Updates" shortly after launch, so the real Sparkle update flow can be reviewed on demand —
         // pair it with a test build labeled an older version so the live feed reads as an update.
