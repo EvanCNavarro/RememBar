@@ -7,6 +7,7 @@ import SwiftUI
 /// modeless). Restrained, dark, native — sized for a small utility window.
 struct AliasEditorView: View {
     @ObservedObject var model: AliasEditorModel
+    @State private var newFamilyHovered = false
 
     var body: some View {
         VStack(alignment: .leading, spacing: Tokens.space) {
@@ -82,16 +83,21 @@ struct AliasEditorView: View {
                 Text("New family")
                     .font(Tokens.caption.weight(.semibold))
             }
-            .foregroundStyle(Tokens.muted)
+            .foregroundStyle(newFamilyHovered ? Tokens.text : Tokens.muted)
             .frame(maxWidth: .infinity)
             .frame(height: Tokens.control)
             .background(
                 RoundedRectangle(cornerRadius: Tokens.radius, style: .continuous)
-                    .strokeBorder(style: StrokeStyle(lineWidth: 1, dash: [4, 3]))
-                    .foregroundStyle(Tokens.lineStrong)
+                    .fill(newFamilyHovered ? Tokens.row : Color.clear)
+                    .overlay(
+                        RoundedRectangle(cornerRadius: Tokens.radius, style: .continuous)
+                            .strokeBorder(style: StrokeStyle(lineWidth: 1, dash: [4, 3]))
+                            .foregroundStyle(newFamilyHovered ? Tokens.lineStrong : Tokens.line)
+                    )
             )
         }
         .buttonStyle(.plain)
+        .onHover { newFamilyHovered = $0 }
         .accessibilityLabel("Add a new term family")
     }
 }
@@ -116,18 +122,19 @@ private struct FamilyCard: View {
                     .foregroundStyle(row.words.isEmpty ? Tokens.quiet : Tokens.text)
                     .lineLimit(1)
                 if !isActive {
+                    // A half-built family is in-progress, not a problem — calm hint, never the amber
+                    // reserved for real user-fixable issues (same principle as the 1Password source).
                     Text("· add a word to activate")
-                        .font(.system(size: 11))
-                        .foregroundStyle(Tokens.warning)
+                        .font(Tokens.caption)
+                        .foregroundStyle(Tokens.muted)
                         .lineLimit(1)
                 }
                 Spacer(minLength: Tokens.space)
-                Button(action: onRemoveFamily) {
-                    Image(systemName: "trash")
-                        .font(.system(size: 11, weight: .semibold))
-                        .foregroundStyle(Tokens.quiet)
-                }
-                .buttonStyle(.plain)
+                HoverIconButton(
+                    systemName: "trash", size: 11,
+                    restColor: Tokens.quiet, hoverColor: .red,
+                    action: onRemoveFamily
+                )
                 .help("Remove this family")
                 .accessibilityLabel("Remove \(identity) family")
             }
@@ -156,13 +163,18 @@ private struct FamilyCard: View {
 private struct AddWordField: View {
     let onCommit: (String) -> Void
     @State private var draft = ""
+    @State private var hovered = false
     @FocusState private var focused: Bool
+
+    private var borderColor: Color {
+        (focused || hovered) ? Tokens.lineStrong : Tokens.line
+    }
 
     var body: some View {
         HStack(spacing: Tokens.micro) {
             Image(systemName: "plus")
                 .font(.system(size: 9, weight: .bold))
-                .foregroundStyle(Tokens.quiet)
+                .foregroundStyle((focused || hovered) ? Tokens.muted : Tokens.quiet)
             TextField("word", text: $draft)
                 .textFieldStyle(.plain)
                 .font(Tokens.caption)
@@ -181,15 +193,41 @@ private struct AddWordField: View {
         .frame(height: 24)
         .background(
             Capsule(style: .continuous)
-                .strokeBorder(style: StrokeStyle(lineWidth: 1, dash: [3, 3]))
-                .foregroundStyle(focused ? Tokens.lineStrong : Tokens.line)
+                .strokeBorder(style: StrokeStyle(lineWidth: 1, dash: [4, 3]))
+                .foregroundStyle(borderColor)
         )
+        .onHover { hovered = $0 }
         .accessibilityLabel("Add a word to this family")
     }
 
     private func commit() {
         onCommit(draft)
         draft = ""
+    }
+}
+
+/// A small inline icon action that brightens on hover with a comfortable hit target — the editor's
+/// counterpart to `IconControlButton` for icons smaller than a full control (remove word, delete
+/// family). Keeps the codebase's "icons brighten on hover" idiom instead of a dead `.plain` button.
+private struct HoverIconButton: View {
+    let systemName: String
+    var size: CGFloat = 11
+    var restColor: Color = Tokens.quiet
+    var hoverColor: Color = Tokens.text
+    var hitSize: CGFloat = 20
+    let action: () -> Void
+    @State private var hovered = false
+
+    var body: some View {
+        Button(action: action) {
+            Image(systemName: systemName)
+                .font(.system(size: size, weight: .semibold))
+                .foregroundStyle(hovered ? hoverColor : restColor)
+                .frame(width: hitSize, height: hitSize)
+                .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+        .onHover { hovered = $0 }
     }
 }
 
@@ -204,16 +242,15 @@ private struct WordChip: View {
                 .font(Tokens.caption)
                 .foregroundStyle(Tokens.text)
                 .lineLimit(1)
-            Button(action: onRemove) {
-                Image(systemName: "xmark")
-                    .font(.system(size: 8, weight: .bold))
-                    .foregroundStyle(Tokens.muted)
-            }
-            .buttonStyle(.plain)
+            HoverIconButton(
+                systemName: "xmark", size: 9,
+                restColor: Tokens.muted, hoverColor: Tokens.text,
+                hitSize: 16, action: onRemove
+            )
             .accessibilityLabel("Remove \(word)")
         }
         .padding(.leading, Tokens.space)
-        .padding(.trailing, Tokens.micro + 1)
+        .padding(.trailing, Tokens.micro)
         .frame(height: 24)
         .background(
             Capsule(style: .continuous)
