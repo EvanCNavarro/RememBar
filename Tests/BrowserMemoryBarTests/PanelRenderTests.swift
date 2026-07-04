@@ -64,10 +64,8 @@ struct PanelRenderTests {
 
         try render(MemoryPanel(store: store).frame(width: 420).background(Tokens.panel),
                    to: "panel_render.png")
-        try render(AboutPopover(onCheckForUpdates: {}, onUninstall: {}).fixedSize(),
-                   to: "panel_about.png")
-        try render(AboutPopover(onCheckForUpdates: {}, onUninstall: {}, showingActions: true).fixedSize(),
-                   to: "panel_about_actions.png")
+        try render(AboutTab(onCheckForUpdates: {}, onUninstall: {}).frame(width: 480, height: 420),
+                   to: "settings_about.png")
 
         // Empty — the real default panel (just the field + its actual placeholder, no invented copy).
         let emptyStore = MemorySearchStore(
@@ -82,7 +80,7 @@ struct PanelRenderTests {
             searchProvider: FixedResponseProvider(response: MemorySearchResponse(results: [], sourceStatuses: []))
         )
         try render(
-            MemoryPanel(store: gearStore, onCheckForUpdates: {}, onUninstall: {}, onManageFamilies: {})
+            MemoryPanel(store: gearStore, onOpenSettings: {})
                 .frame(width: 420).background(Tokens.panel),
             to: "panel_gear.png"
         )

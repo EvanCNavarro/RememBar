@@ -44,9 +44,7 @@ struct GalleryView: View {
         case empty = "Search — empty"
         case results = "Search — results"
         case loading = "Search — loading"
-        case about = "About — default"
-        case aboutActions = "About — actions open"
-        case termFamilies = "Term families — editor"
+        case settings = "Settings — tabbed window"
         case updateAvailable = "Update — available"
         case updateChecking = "Update — checking"
         case updateReady = "Update — ready to install"
@@ -54,15 +52,15 @@ struct GalleryView: View {
         var id: String { rawValue }
     }
 
-    private static let panelStages: [Stage] = [.empty, .results, .loading, .about, .aboutActions, .termFamilies]
-    // A live, in-memory editor model for the gallery — writes to a scratch file, never the real config.
-    @MainActor private static let galleryEditorModel: AliasEditorModel = {
+    private static let panelStages: [Stage] = [.empty, .results, .loading, .settings]
+    // A live, in-memory catalog for the gallery settings window — scratch file, never the real config.
+    @MainActor private static let gallerySettingsCatalog: AliasCatalog = {
         let dir = FileManager.default.temporaryDirectory
             .appendingPathComponent("RememBarGalleryAliases", isDirectory: true)
         try? FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
         let catalog = AliasCatalog(url: dir.appendingPathComponent("aliases.json"))
         catalog.update(families: [["evan", "ecn", "navarro"], ["mom", "mother"]])
-        return AliasEditorModel(catalog: catalog)
+        return catalog
     }()
     private static let updateStages: [Stage] = [.updateAvailable, .updateChecking, .updateReady, .updateUpToDate]
     private static let sampleReleaseNotes = [
@@ -171,12 +169,9 @@ struct GalleryView: View {
             MemoryPanel(store: resultsStore).frame(width: 384)
         case .loading:
             MemoryPanel(store: loadingStore).frame(width: 384)
-        case .about:
-            AboutPopover(onCheckForUpdates: {}, onUninstall: {})
-        case .aboutActions:
-            AboutPopover(onCheckForUpdates: {}, onUninstall: {}, showingActions: true)
-        case .termFamilies:
-            AliasEditorView(model: Self.galleryEditorModel).frame(width: 460, height: 400)
+        case .settings:
+            SettingsRootView(catalog: Self.gallerySettingsCatalog, onCheckForUpdates: {}, onUninstall: {})
+                .frame(width: 480, height: 460)
         case .updateAvailable:
             GalleryDialogFrame {
                 UpdateDialog.available(version: "0.2.0", currentVersion: "0.1.0",

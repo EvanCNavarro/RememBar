@@ -29,6 +29,14 @@ struct AliasEditorRenderTests {
 
         let empty = AliasEditorModel(catalog: try catalog([]))
         try render(AliasEditorView(model: empty).frame(width: 460, height: 380), to: "alias_editor_empty.png")
+
+        // The tabbed settings window (Term Families tab + the toolbar-style tab bar).
+        let settingsCatalog = try catalog([["evan", "ecn", "navarro"], ["mom", "mother"]])
+        try render(
+            SettingsRootView(catalog: settingsCatalog, onCheckForUpdates: {}, onUninstall: {})
+                .frame(width: 480, height: 460),
+            to: "settings_window.png"
+        )
     }
 
     private func render(_ view: some View, to name: String) throws {

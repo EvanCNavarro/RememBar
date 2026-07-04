@@ -5,28 +5,23 @@ import AppKit
 
 struct MemoryPanel: View {
     @ObservedObject var store: MemorySearchStore
-    /// Sparkle is injected as an optional closure so this view (and the render harness) never
-    /// import or instantiate the updater. The app passes `SparkleUpdater.shared.checkForUpdates`.
-    var onCheckForUpdates: (() -> Void)?
-    /// Injected for the same reason — the app passes the real "move RememBar to the Trash" action.
-    var onUninstall: (() -> Void)?
-    /// Opens the Term Families editor window. Injected so this view stays free of window/AppKit concerns.
-    var onManageFamilies: (() -> Void)?
+    /// Opens RememBar's settings window (Term Families, About, …). Injected so this view stays free of
+    /// window/AppKit concerns; the app wires it to `SettingsWindowController`.
+    var onOpenSettings: (() -> Void)?
 
     var body: some View {
         VStack(alignment: .leading, spacing: Tokens.space) {
             HStack(spacing: Tokens.space) {
                 CommandField(store: store)
-                if let onManageFamilies {
-                    // A distinct settings affordance — term families are configuration, not "help",
-                    // so they get a gear next to the "?" rather than living inside the About menu.
-                    IconControlButton(size: Tokens.control, radius: Tokens.radius, action: onManageFamilies) {
+                if let onOpenSettings {
+                    // The single settings affordance — a gear that opens the tabbed settings window
+                    // (Term Families, About). About moved out of a "?" popover into that window.
+                    IconControlButton(size: Tokens.control, radius: Tokens.radius, action: onOpenSettings) {
                         Image(systemName: "gearshape")
                             .font(.system(size: 14, weight: .semibold))
                     }
-                    .accessibilityLabel("Term Families")
+                    .accessibilityLabel("Settings")
                 }
-                AboutControl(onCheckForUpdates: onCheckForUpdates, onUninstall: onUninstall)
             }
 
             if store.showsResultsQuery {

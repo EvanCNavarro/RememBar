@@ -89,9 +89,13 @@ struct RememBarApp: App {
         MenuBarExtra {
             MemoryPanel(
                 store: store,
-                onCheckForUpdates: { SparkleUpdater.shared.checkForUpdates() },
-                onUninstall: { performUninstall() },
-                onManageFamilies: { AliasEditorWindowController.show(catalog: aliasCatalog) }
+                onOpenSettings: {
+                    SettingsWindowController.show(
+                        catalog: aliasCatalog,
+                        onCheckForUpdates: { SparkleUpdater.shared.checkForUpdates() },
+                        onUninstall: { performUninstall() }
+                    )
+                }
             )
                 .frame(width: 384)
                 .onAppear {
