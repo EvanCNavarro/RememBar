@@ -45,6 +45,26 @@ struct AliasCatalogTests {
         #expect(catalog.snapshot.expand(["red"]) == ["red", "crimson"])
     }
 
+    @Test("survives a heavy storm of interleaved updates, snapshots and reloads")
+    func heavyConcurrentStorm() async throws {
+        let (url, cleanup) = try tempURL(); defer { cleanup() }
+        let catalog = AliasCatalog(url: url)
+        await withTaskGroup(of: Void.self) { group in
+            for idx in 0..<300 {
+                switch idx % 3 {
+                case 0: group.addTask { catalog.update(families: [["w\(idx % 7)", "a\(idx % 7)"]]) }
+                case 1: group.addTask { _ = catalog.snapshot.expand(["w\(idx % 7)"]) }
+                default: group.addTask { catalog.reload() }
+                }
+            }
+        }
+        // No crash / torn read; the final snapshot is a valid sanitized value (0 or 1 group here).
+        #expect(catalog.snapshot.families.count <= 1)
+        // And the catalog is still usable afterward.
+        catalog.update(families: [["final", "done"]])
+        #expect(catalog.snapshot.expand(["final"]) == ["final", "done"])
+    }
+
     // The load-bearing concurrency guarantee: the catalog's snapshot is read by search providers
     // running OFF the main actor (CompositeMemorySearchProvider's withTaskGroup). A @MainActor design
     // would not compile / would crash there — this proves concurrent reads+writes are race-free.

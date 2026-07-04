@@ -155,6 +155,29 @@ struct LiveSearchTests {
         #expect(kept)
     }
 
+    @Test("a storm of keystrokes, submits and clears settles cleanly on the final query")
+    func keystrokeStormSettles() async {
+        let provider = RequestRecordingSearchProvider()
+        let store = await MainActor.run {
+            MemorySearchStore(searchProvider: provider, searchDebounce: .milliseconds(3))
+        }
+        // Hammer the single dispatch pipeline: partial types, interleaved clears + an Enter, then a
+        // final distinct query. Must not crash / strand tasks, and must end on the final query.
+        await MainActor.run {
+            for round in 0..<40 {
+                store.inputText = "q\(round)a"; store.inputChanged()
+                store.inputText = "q\(round)ab"; store.inputChanged()
+                if round % 5 == 0 { store.inputText = "force\(round)"; store.submit() }
+                if round % 7 == 0 { store.inputText = ""; store.inputChanged() }
+            }
+            store.inputText = "finalquery"; store.submit()
+        }
+        let settled = await eventually { provider.requests.last?.query == "finalquery" }
+        #expect(settled)
+        let phaseOK = await MainActor.run { store.phase == .results && store.baseQuery == "finalquery" }
+        #expect(phaseOK)
+    }
+
     @Test("empty results land in a distinct no-results state")
     func noResultsDistinctState() async {
         let store = await MainActor.run {
