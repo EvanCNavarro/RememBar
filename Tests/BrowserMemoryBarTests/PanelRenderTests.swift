@@ -80,6 +80,12 @@ struct PanelRenderTests {
 
         try render(MemoryPanel(store: store).frame(width: 420).background(Tokens.panel),
                    to: "panel_render.png")
+
+        // Keyboard highlight — arrow-selected result (isSelected styling).
+        store.moveSelectionDown()
+        #expect(store.selectedID != nil)
+        try render(MemoryPanel(store: store).frame(width: 420).background(Tokens.panel),
+                   to: "panel_selected.png")
         try render(AboutTab(onCheckForUpdates: {}, onUninstall: {}).frame(width: 480, height: 420),
                    to: "settings_about.png")
 

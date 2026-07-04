@@ -228,6 +228,73 @@ struct MemorySearchStoreTests {
         }
     }
 
+    @Test("arrow-down highlights the first result, walks down, and advances a page at the boundary")
+    func keyboardDownWalksAndPages() async throws {
+        let ordered = MemoryResult.initialRanking.compactMap { MemoryResult.samples[$0] }
+        let store = await MainActor.run {
+            MemorySearchStore(
+                searchProvider: StaticResponseMemorySearchProvider(response: MemorySearchResponse(results: ordered)),
+                pageSize: 2, resultFetchLimit: 5
+            )
+        }
+        await MainActor.run { store.inputText = "web apps"; store.submit() }
+        _ = await eventually { await MainActor.run { store.results.map(\.id) == ["workflow", "claude-design"] } }
+        await MainActor.run {
+            #expect(store.selectedID == nil)
+            store.moveSelectionDown()
+            #expect(store.selectedID == "workflow")          // none -> first
+            store.moveSelectionDown()
+            #expect(store.selectedID == "claude-design")     // walks down within the page
+            store.moveSelectionDown()
+            #expect(store.results.map(\.id) == ["codex-prototypes", "landing-pages"]) // crossed to page 2
+            #expect(store.selectedID == "codex-prototypes")  // first of the new page
+        }
+    }
+
+    @Test("arrow-up stops at the very top (no wrap)")
+    func keyboardUpStopsAtTop() async throws {
+        let ordered = MemoryResult.initialRanking.compactMap { MemoryResult.samples[$0] }
+        let store = await MainActor.run {
+            MemorySearchStore(
+                searchProvider: StaticResponseMemorySearchProvider(response: MemorySearchResponse(results: ordered)),
+                pageSize: 2, resultFetchLimit: 5
+            )
+        }
+        await MainActor.run { store.inputText = "web apps"; store.submit() }
+        _ = await eventually { await MainActor.run { !store.results.isEmpty } }
+        await MainActor.run {
+            store.moveSelectionDown()                        // -> workflow (top)
+            #expect(store.selectedID == "workflow")
+            store.moveSelectionUp()                          // at top, page 1 -> no wrap, stays
+            #expect(store.selectedID == "workflow")
+            #expect(!store.canGoToPreviousPage)              // still on the first page
+        }
+    }
+
+    @Test("Enter opens the highlighted/top result when results match; searches when the query is stale")
+    func enterOpensOrSearches() async throws {
+        let opener = RecordingMemoryResultOpener()
+        let ordered = MemoryResult.initialRanking.compactMap { MemoryResult.samples[$0] }
+        let store = await MainActor.run {
+            MemorySearchStore(
+                searchProvider: StaticResponseMemorySearchProvider(response: MemorySearchResponse(results: ordered)),
+                resultOpener: opener, pageSize: 2, resultFetchLimit: 5
+            )
+        }
+        await MainActor.run { store.inputText = "web apps"; store.submit() }
+        _ = await eventually { await MainActor.run { store.resultsQuery == "web apps" && !store.results.isEmpty } }
+        await MainActor.run {
+            // No highlight yet + matching results -> Enter opens the TOP result.
+            store.submitOrOpen()
+            #expect(opener.opened.map(\.id) == ["workflow"])
+            // Override the text (stale) -> Enter searches, does NOT open a stale row.
+            store.inputText = "somethingelse"
+            store.submitOrOpen()
+            #expect(opener.opened.map(\.id) == ["workflow"]) // unchanged
+            #expect(store.baseQuery == "somethingelse")      // a search was dispatched instead
+        }
+    }
+
     @Test("memory search store clear cancels loading search")
     func memorySearchStoreClearCancelsLoadingSearch() async throws {
         let store = await MainActor.run {

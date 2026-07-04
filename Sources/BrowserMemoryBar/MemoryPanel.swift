@@ -80,7 +80,17 @@ private struct CommandField: View {
                 // Never disabled: live search must stay typeable while a query is in flight.
                 .focused($focused)
                 .onChange(of: store.inputText) { store.inputChanged() }
-                .onSubmit(store.submit)
+                // Keyboard navigation of results while the field keeps focus: arrows move the
+                // highlight (return .handled so the caret doesn't move), Enter opens the highlighted/
+                // top result (or searches a stale query), Esc clears an active search.
+                .onKeyPress(.upArrow) { store.moveSelectionUp(); return .handled }
+                .onKeyPress(.downArrow) { store.moveSelectionDown(); return .handled }
+                .onKeyPress(.escape) {
+                    guard store.canClearSearch else { return .ignored }
+                    withAnimation(.easeInOut(duration: 0.2)) { store.clearSearch() }
+                    return .handled
+                }
+                .onSubmit(store.submitOrOpen)
                 .accessibilityLabel("Search files and browser history")
 
             if store.canClearSearch {
@@ -92,7 +102,7 @@ private struct CommandField: View {
                 .accessibilityLabel("Clear search and start over")
             }
 
-            IconControlButton(action: store.submit) {
+            IconControlButton(action: store.submitOrOpen) {
                 ZStack {
                     Text("↵")
                         .font(.system(size: 15, weight: .medium))

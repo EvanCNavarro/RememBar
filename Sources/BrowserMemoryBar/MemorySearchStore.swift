@@ -274,6 +274,55 @@ final class MemorySearchStore: ObservableObject {
         NSPasteboard.general.setString(result.copyValue, forType: .string)
     }
 
+    /// The result the keyboard highlight is on, if any.
+    var selectedResult: MemoryResult? {
+        guard let selectedID else { return nil }
+        return results.first { $0.id == selectedID }
+    }
+
+    /// Arrow-Down: move the highlight to the next result, crossing to the next page at the page
+    /// boundary. No wrap — stops at the last result (the standard menu/launcher model).
+    func moveSelectionDown() {
+        guard !results.isEmpty else { return }
+        guard let current = selectedID, let index = results.firstIndex(where: { $0.id == current }) else {
+            selectedID = results.first?.id
+            return
+        }
+        if index + 1 < results.count {
+            selectedID = results[index + 1].id
+        } else if canGoToNextPage {
+            goToNextPage()
+            selectedID = results.first?.id
+        }
+    }
+
+    /// Arrow-Up: move the highlight to the previous result, crossing to the previous page at the
+    /// page top. No wrap — stops at the first result.
+    func moveSelectionUp() {
+        guard !results.isEmpty else { return }
+        guard let current = selectedID, let index = results.firstIndex(where: { $0.id == current }) else {
+            selectedID = results.last?.id
+            return
+        }
+        if index > 0 {
+            selectedID = results[index - 1].id
+        } else if canGoToPreviousPage {
+            goToPreviousPage()
+            selectedID = results.last?.id
+        }
+    }
+
+    /// Enter/Return: when the shown results still match what's typed, open the highlighted result
+    /// (or the top one) — the launcher "type, then Enter opens" model. Otherwise (nothing yet, or a
+    /// query you're mid-overriding) run the search for the current text.
+    func submitOrOpen() {
+        if !resultsAreStale, phase == .results, let target = selectedResult ?? results.first {
+            open(target)
+            return
+        }
+        submit()
+    }
+
     func open(_ result: MemoryResult) {
         diagnostics.record(RememBarDiagnosticEvent.resultOpenRequested, fields: result.diagnosticFields)
         resultOpener.open(result)
