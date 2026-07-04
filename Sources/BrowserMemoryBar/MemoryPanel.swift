@@ -39,14 +39,14 @@ struct MemoryPanel: View {
                     // Instant in (the rows do their own staggered entrance); fade out on clear so the
                     // panel flushes gracefully instead of popping to empty.
                     .transition(.asymmetric(insertion: .identity, removal: .opacity))
-                    // Dim while a re-search runs so stale rows read as "updating", not as matches for
-                    // the query you're now typing.
-                    .opacity(store.isSearching ? 0.45 : 1)
-                    .animation(.easeInOut(duration: 0.15), value: store.isSearching)
+                    // Dim the moment the rows stop matching the typed query, so they read as "stale /
+                    // updating" — immediate feedback when you override a query, not a frozen list.
+                    .opacity(store.resultsAreStale ? 0.45 : 1)
+                    .animation(.easeInOut(duration: 0.15), value: store.resultsAreStale)
             }
 
             if store.showsNoResults {
-                NoResultsRow()
+                NoResultsRow(query: store.resultsQuery)
                     .transition(.opacity)
             }
 

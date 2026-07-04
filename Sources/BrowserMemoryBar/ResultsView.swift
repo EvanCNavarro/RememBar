@@ -34,24 +34,33 @@ struct LoadingRows: View {
 }
 
 /// Shown when a search completed but found nothing — a first-class state, visually distinct from
-/// loading, so the panel never reads as a blank/broken list.
+/// loading, so the panel never reads as a blank/broken list. Names the query so it's clear WHAT
+/// found nothing.
 struct NoResultsRow: View {
+    var query: String = ""
+
+    private var label: String {
+        query.isEmpty ? "No matches" : "No matches for \u{201C}\(query)\u{201D}"
+    }
+
     var body: some View {
         HStack(spacing: Tokens.space) {
             Image(systemName: "magnifyingglass")
                 .font(.system(size: 13, weight: .semibold))
                 .foregroundStyle(Tokens.quiet)
                 .frame(width: 16)
-            Text("No matches")
+            Text(label)
                 .font(Tokens.caption)
                 .foregroundStyle(Tokens.muted)
+                .lineLimit(1)
+                .truncationMode(.middle)
             Spacer(minLength: 0)
         }
         .padding(.horizontal, Tokens.space)
         .padding(.vertical, Tokens.micro + 2)
         .frame(maxWidth: .infinity, alignment: .leading)
         .accessibilityElement(children: .combine)
-        .accessibilityLabel("No matches")
+        .accessibilityLabel(label)
     }
 }
 

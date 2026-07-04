@@ -204,6 +204,30 @@ struct LiveSearchTests {
         #expect(cleared)
     }
 
+    @Test("results are marked stale the instant the field diverges — even below the search minimum")
+    func resultsGoStaleImmediatelyOnDivergence() async {
+        let store = await MainActor.run {
+            MemorySearchStore(searchProvider: StaticMemorySearchProvider(results: [sampleResult()]))
+        }
+        await MainActor.run { store.inputText = "web"; store.submit() }
+        _ = await eventually { await MainActor.run { store.phase == .results && !store.results.isEmpty } }
+        // Fresh, matching results: not stale.
+        let matching = await MainActor.run { store.resultsQuery == "web" && !store.resultsAreStale }
+        #expect(matching)
+        // Divergence is immediate — a single character (below the 2-char live minimum) already dims.
+        let staleOnFirstChar = await MainActor.run { () -> Bool in
+            store.inputText = "g"
+            return store.resultsAreStale
+        }
+        #expect(staleOnFirstChar)
+        // Typing back to the exact results' query clears the stale flag again.
+        let unStale = await MainActor.run { () -> Bool in
+            store.inputText = "web"
+            return !store.resultsAreStale
+        }
+        #expect(unStale)
+    }
+
     @Test("isSearching is false in idle, too-short and cleared states")
     func isSearchingFalseWhenNotSearching() async {
         let provider = RequestRecordingSearchProvider()

@@ -48,6 +48,9 @@ final class MemorySearchStore: ObservableObject {
     /// — instead of looking frozen when you edit a query that already has results ("stale-while-
     /// revalidate"). Not set during the debounce wait, so it doesn't flash on every keystroke.
     @Published private(set) var isSearching = false
+    /// The query the currently-displayed results are actually for (set when a search commits). When
+    /// the field diverges from it, the on-screen rows are stale — see `resultsAreStale`.
+    @Published private(set) var resultsQuery = ""
     @Published var selectedID: MemoryResult.ID?
 
     private var searchTask: Task<Void, Never>?
@@ -80,6 +83,13 @@ final class MemorySearchStore: ObservableObject {
         self.pageSize = max(1, pageSize)
         self.resultFetchLimit = max(self.pageSize, resultFetchLimit)
         self.searchDebounce = searchDebounce
+    }
+
+    /// On-screen results no longer match what's typed — the moment you edit the query away from the
+    /// results' query, they're stale (dim them). Immediate: triggers on the FIRST diverging keystroke,
+    /// even below the live-search length minimum, so overriding a query is never a silent dead zone.
+    var resultsAreStale: Bool {
+        !results.isEmpty && inputText.trimmingCharacters(in: .whitespacesAndNewlines) != resultsQuery
     }
 
     /// True once a search has completed for the current query but found nothing — a distinct state
@@ -233,6 +243,7 @@ final class MemorySearchStore: ObservableObject {
         searchTask?.cancel()
         searchTask = nil
         isSearching = false
+        resultsQuery = ""
         inputText = ""
         baseQuery = ""
         refinements = []
@@ -364,6 +375,7 @@ final class MemorySearchStore: ObservableObject {
         applyCurrentPage()
         phase = .results
         isSearching = false
+        resultsQuery = query
         diagnostics.record(
             RememBarDiagnosticEvent.searchFinished,
             fields: searchFinishedFields(
