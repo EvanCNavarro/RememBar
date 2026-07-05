@@ -27,24 +27,30 @@ enum SettingsWindowController {
             return
         }
         NSApp.setActivationPolicy(.regular)
+        let contentSize = NSSize(width: 400, height: 380)
         let win = NSWindow(
-            contentRect: NSRect(x: 0, y: 0, width: 400, height: 460),
-            styleMask: [.titled, .closable, .resizable, .miniaturizable],
+            contentRect: NSRect(origin: .zero, size: contentSize),
+            styleMask: [.titled, .closable, .miniaturizable],   // NOT .resizable — fixed, compact
             backing: .buffered,
             defer: false
         )
         win.title = "RememBar Settings"
         win.isReleasedWhenClosed = false
-        // Don't let macOS restore a stale frame: a resizable window is `isRestorable` by default, so a
-        // once-dragged-tall settings window comes back tall on the next open — overriding the compact
-        // size below and leaving the short About tab a huge vertical void. Always open at the set size.
-        win.isRestorable = false
-        win.contentView = NSHostingView(rootView: SettingsRootView(
+        win.isRestorable = false   // don't restore a stale frame on open
+
+        let host = NSHostingView(rootView: SettingsRootView(
             catalog: catalog,
             onCheckForUpdates: onCheckForUpdates,
             onUninstall: onUninstall
         ))
-        win.setContentSize(NSSize(width: 400, height: 460))
+        // THE fix for the vertical-void bug: an NSHostingView by default resizes the WINDOW to the
+        // SwiftUI content's ideal size. The About tab's ideal height (its wrapping description measured at
+        // the content's minimum width) is ~1500pt, so the window ballooned to that with a huge void; Term
+        // Families only looked fine because its ScrollView bounded the ideal. `sizingOptions = []` turns
+        // that auto-resize OFF — the window stays the fixed `contentSize`, and the content fills it.
+        host.sizingOptions = []
+        win.contentView = host
+        win.setContentSize(contentSize)
         win.center()
         let del = WindowDelegate()
         win.delegate = del
@@ -52,9 +58,6 @@ enum SettingsWindowController {
         win.makeKeyAndOrderFront(nil)
         NSApp.activate(ignoringOtherApps: true)
         window = win
-        // The 460 above is just a sane opening size; `WindowContentSizer` (in SettingsRootView) then
-        // resizes the window to hug the selected tab's content on appear + every tab switch — so the
-        // window always fits its content, with no vertical void, whatever height it opened at.
     }
 
     /// Restores the accessory (menu-bar-only) activation policy when settings close, so RememBar
