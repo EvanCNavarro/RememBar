@@ -43,33 +43,26 @@ struct AboutTab: View {
     }
 
     var body: some View {
-        VStack(alignment: .leading, spacing: Tokens.gap) {
-            // The SHARED identity header — icon + name + version + made-with + the ··· overflow. Only the
-            // dynamic pieces (name/version/icon/actions) differ from TermTile.
-            AppHeader(name: "RememBar", version: versionText, bundledIcon: appIcon) {
-                OverflowMenu(overflowActions)
-            }
-
+        // The SAME identity card as TermTile — icon · name · version · made-with · ··· · GitHub/License ·
+        // separator. RememBar supplies its description as the content below the separator.
+        AppIdentityCard(
+            name: "RememBar",
+            version: versionText,
+            bundledIcon: appIcon,
+            actions: overflowActions,
+            links: [
+                .github(URL(string: "https://github.com/EvanCNavarro/RememBar")!),
+                .license(URL(string: "https://github.com/EvanCNavarro/RememBar/blob/main/LICENSE")!)
+            ]
+        ) {
             Text("A minimalist menu-bar search for your system files, browser history, password "
                 + "managers, and more.")
                 .font(Tokens.caption)
                 .foregroundStyle(Tokens.muted)
                 .fixedSize(horizontal: false, vertical: true)
-
-            // Outbound links — GitHub + License, matching TermTile's below-header treatment (audit #1).
-            HStack(spacing: Tokens.micro + 2) {
-                LinkButton("GitHub", url: URL(string: "https://github.com/EvanCNavarro/RememBar")!,
-                           image: Brand.github)
-                LinkButton("License",
-                           url: URL(string: "https://github.com/EvanCNavarro/RememBar/blob/main/LICENSE")!,
-                           systemImage: "doc.text")
-            }
-
         }
-        .padding(Tokens.space + Tokens.micro)
-        // Cap the identity column to TermTile's popover width (280) so the header + links render at the
-        // SAME size in both apps — the settings window is ≥380 for the alias editor, but the About need
-        // not stretch to fill it. Centered top in the window.
+        // Cap to TermTile's popover width (280) so the card renders identically; the settings window is
+        // ≥380 for the alias editor, so left-place the 280 card rather than stretch it.
         .frame(maxWidth: 280, alignment: .topLeading)
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
         .background(Tokens.panel)
