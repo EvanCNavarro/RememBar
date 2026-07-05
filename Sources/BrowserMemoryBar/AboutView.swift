@@ -56,10 +56,14 @@ struct AboutTab: View {
                 .foregroundStyle(Tokens.muted)
                 .fixedSize(horizontal: false, vertical: true)
 
-            LearnMoreLink(
-                displayText: "ecn.dev/apps/RememBar",
-                url: URL(string: "https://ecn.dev/apps/RememBar")!
-            )
+            // Outbound links — GitHub + License, matching TermTile's below-header treatment (audit #1).
+            HStack(spacing: Tokens.micro + 2) {
+                LinkButton("GitHub", url: URL(string: "https://github.com/EvanCNavarro/RememBar")!,
+                           image: Brand.github)
+                LinkButton("License",
+                           url: URL(string: "https://github.com/EvanCNavarro/RememBar/blob/main/LICENSE")!,
+                           systemImage: "doc.text")
+            }
 
             Spacer(minLength: 0)
         }

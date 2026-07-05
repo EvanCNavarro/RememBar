@@ -16,7 +16,9 @@ struct MemoryPanel: View {
                 if let onOpenSettings {
                     // The single settings affordance — a gear that opens the tabbed settings window
                     // (Term Families, About). About moved out of a "?" popover into that window.
-                    IconControlButton(size: Tokens.control, radius: Tokens.radius, action: onOpenSettings) {
+                    // 26pt (controlButton) like every other icon control + the ··· — was the lone 34pt
+                    // outlier (audit #2). Radius stays Tokens.radius to match the ···.
+                    IconControlButton(radius: Tokens.radius, action: onOpenSettings) {
                         Image(systemName: "gearshape")
                             .font(.system(size: 14, weight: .semibold))
                     }
