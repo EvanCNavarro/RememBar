@@ -37,21 +37,17 @@ struct AboutTab: View {
 
     var body: some View {
         // The SAME identity card as TermTile — icon · name · version · made-with · ··· · GitHub/License ·
-        // separator. RememBar supplies its description as the content below the separator.
+        // separator. RememBar's description is the subtitle (under the header, above the links).
         AppIdentityCard(
             name: RememBarPaths.appName,
             version: AppInfo.fromBundle().displayVersion,
             repoURL: RememBarPaths.repoURL,
             licenseURL: RememBarPaths.licenseURL,
+            subtitle: "A minimalist menu-bar search for your system files, browser history, password "
+                + "managers, and more.",
             bundledIcon: appIcon,
             actions: overflowActions
-        ) {
-            Text("A minimalist menu-bar search for your system files, browser history, password "
-                + "managers, and more.")
-                .font(Tokens.caption)
-                .foregroundStyle(Tokens.muted)
-                .fixedSize(horizontal: false, vertical: true)
-        }
+        )
         // Fill the settings window's full width, like the Term Families tab — the AppIdentityCard is
         // container-flexible (280pt in TermTile's popover, full-width here). Same component, different
         // container.
