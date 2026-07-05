@@ -10,6 +10,15 @@ struct RememBarPathsTests {
         return (RememBarPaths(library: library, bundleURL: bundleURL), library)
     }
 
+    // Canonical outbound URLs (identity constants the About card reads) — pinned here so a typo can't
+    // silently ship a broken GitHub/License link (#29-B4).
+    @Test("canonical repo + license URLs (license via HEAD so a branch rename never 404s)")
+    func canonicalURLs() {
+        #expect(RememBarPaths.repoURL.absoluteString == "https://github.com/EvanCNavarro/RememBar")
+        #expect(RememBarPaths.licenseURL.absoluteString
+            == "https://github.com/EvanCNavarro/RememBar/blob/HEAD/LICENSE")
+    }
+
     @Test("data root + derived dirs match the conventional layout")
     func derivedDirectories() {
         let (sut, library) = paths()

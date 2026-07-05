@@ -14,6 +14,11 @@ struct RememBarPaths {
     /// Current id first, then every prior id — so the footprint covers leftovers from renames.
     static let bundleIDs = ["dev.ecn.apps.remembar", "com.evancnavarro.remembar"]
 
+    /// Canonical outbound links (identity constants) — the single Swift-side source the About card reads,
+    /// so they're never hard-coded in a view. `HEAD` (not a branch) so a rename never 404s the license.
+    static let repoURL = URL(string: "https://github.com/EvanCNavarro/RememBar")!
+    static let licenseURL = URL(string: "https://github.com/EvanCNavarro/RememBar/blob/HEAD/LICENSE")!
+
     /// `~/Library` — injected so the footprint is unit-testable against a sandbox home.
     let library: URL
     /// The running `.app` bundle, self-located via `Bundle.main`. `nil` under tests / CLI.

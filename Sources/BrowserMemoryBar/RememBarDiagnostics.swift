@@ -69,7 +69,7 @@ final class RememBarDiagnostics: @unchecked Sendable {
 
     @discardableResult
     func startSession(
-        appVersion: String? = Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String,
+        appVersion: String? = Bundle.main.marketingVersion,
         crashReportScanner: any RememBarCrashReportScanning = RememBarCrashReportScanner()
     ) -> PreviousDiagnosticSession? {
         guard isEnabled else { return nil }

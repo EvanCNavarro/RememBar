@@ -14,13 +14,6 @@ struct AboutTab: View {
 
     @State private var confirmingRemoval = false
 
-    /// Version without the "Version " prefix (AppHeader adds it).
-    private var versionText: String {
-        let short = Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "0.1.0"
-        let build = Bundle.main.infoDictionary?["CFBundleVersion"] as? String ?? "1"
-        return "\(short) (\(build))"
-    }
-
     private var appIcon: NSImage? {
         Bundle.packagedResourceURL("RememBarAppIcon", withExtension: "png").flatMap(NSImage.init(contentsOf:))
     }
@@ -46,14 +39,12 @@ struct AboutTab: View {
         // The SAME identity card as TermTile — icon · name · version · made-with · ··· · GitHub/License ·
         // separator. RememBar supplies its description as the content below the separator.
         AppIdentityCard(
-            name: "RememBar",
-            version: versionText,
+            name: RememBarPaths.appName,
+            version: AppInfo.fromBundle().displayVersion,
+            repoURL: RememBarPaths.repoURL,
+            licenseURL: RememBarPaths.licenseURL,
             bundledIcon: appIcon,
-            actions: overflowActions,
-            links: [
-                .github(URL(string: "https://github.com/EvanCNavarro/RememBar")!),
-                .license(URL(string: "https://github.com/EvanCNavarro/RememBar/blob/main/LICENSE")!)
-            ]
+            actions: overflowActions
         ) {
             Text("A minimalist menu-bar search for your system files, browser history, password "
                 + "managers, and more.")

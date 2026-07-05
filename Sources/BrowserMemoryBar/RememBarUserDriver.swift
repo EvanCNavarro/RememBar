@@ -73,7 +73,7 @@ final class RememBarUserDriver: NSObject, SPUUserDriver, NSWindowDelegate {
     private var pendingAck: CheckedContinuation<Void, Never>?
 
     private var currentAppVersion: String {
-        Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "this version"
+        Bundle.main.marketingVersion ?? "this version"
     }
 
     // MARK: Window
