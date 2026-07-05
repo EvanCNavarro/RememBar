@@ -32,8 +32,11 @@ struct AboutTab: View {
             items.append(MenuAction(title: "Check for Updates",
                                     systemImage: "arrow.triangle.2.circlepath", action: onCheckForUpdates))
         }
+        items.append(MenuAction(title: "Quit RememBar", systemImage: "power") {
+            NSApplication.shared.terminate(nil)
+        })
         if onUninstall != nil {
-            items.append(MenuAction(title: "Remove RememBar…", systemImage: "trash",
+            items.append(MenuAction(title: "Uninstall RememBar…", systemImage: "trash",
                                     destructive: true) { confirmingRemoval = true })
         }
         return items
@@ -63,7 +66,7 @@ struct AboutTab: View {
         .padding(Tokens.space + Tokens.micro)
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .background(Tokens.panel)
-        .alert("Remove RememBar?", isPresented: $confirmingRemoval) {
+        .alert("Uninstall RememBar?", isPresented: $confirmingRemoval) {
             Button("Move to Trash", role: .destructive) { onUninstall?() }
             Button("Cancel", role: .cancel) {}
         } message: {

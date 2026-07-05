@@ -65,7 +65,7 @@ struct GalleryView: View {
     private static let updateStages: [Stage] = [.updateAvailable, .updateChecking, .updateReady, .updateUpToDate]
     private static let sampleReleaseNotes = [
         "Term families (aliases) across files, history & password managers",
-        "One-click \"Remove RememBar\" uninstaller",
+        "One-click \"Uninstall RememBar\" uninstaller",
         "Redesigned About panel + smoother result animations",
         "Custom in-app update flow (this dialog)",
         "Faster Spotlight indexing on large home folders",
