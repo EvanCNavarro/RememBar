@@ -1,4 +1,5 @@
 import SwiftUI
+import MacFaceKit
 
 struct QueryContext: View {
     let label: String
