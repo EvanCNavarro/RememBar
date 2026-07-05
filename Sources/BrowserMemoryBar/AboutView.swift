@@ -52,11 +52,11 @@ struct AboutTab: View {
                 .foregroundStyle(Tokens.muted)
                 .fixedSize(horizontal: false, vertical: true)
         }
-        // Cap to TermTile's popover width (280) so the card renders identically; the settings window is
-        // ≥380 for the alias editor, so left-place the 280 card rather than stretch it. NO maxHeight —
-        // the card sizes to its content so the About tab (and its window) stays compact, no vertical void.
-        .frame(maxWidth: 280, alignment: .topLeading)
-        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+        // Cap the identity column to TermTile's popover width (280) so the card renders at the same size,
+        // then CENTER it horizontally in the wider settings window (which is ≥380 for the alias editor) so
+        // it reads as balanced, not a left-hugging block with a right gap.
+        .frame(maxWidth: 280)
+        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
         .background(Tokens.panel)
         .alert("Uninstall RememBar?", isPresented: $confirmingRemoval) {
             Button("Move to Trash", role: .destructive) { onUninstall?() }
