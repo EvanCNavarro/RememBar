@@ -52,11 +52,10 @@ struct AboutTab: View {
                 .foregroundStyle(Tokens.muted)
                 .fixedSize(horizontal: false, vertical: true)
         }
-        // Cap the identity column to TermTile's popover width (280) so the card renders at the same size,
-        // then CENTER it horizontally in the wider settings window (which is ≥380 for the alias editor) so
-        // it reads as balanced, not a left-hugging block with a right gap.
-        .frame(maxWidth: 280)
-        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
+        // Fill the settings window's full width, like the Term Families tab — the AppIdentityCard is
+        // container-flexible (280pt in TermTile's popover, full-width here). Same component, different
+        // container.
+        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
         .background(Tokens.panel)
         .alert("Uninstall RememBar?", isPresented: $confirmingRemoval) {
             Button("Move to Trash", role: .destructive) { onUninstall?() }
