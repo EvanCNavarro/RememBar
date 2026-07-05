@@ -1,4 +1,5 @@
 import SwiftUI
+import MacFaceKit
 
 // RememBar's update-flow dialogs. Every state is one `UpdateDialog`: the icon never resizes, the
 // header / sub-header / button row hold their size and place, and only the middle (release notes or
@@ -181,7 +182,7 @@ struct UpdateDialog: View {
 
     var body: some View {
         VStack(spacing: Tokens.space + Tokens.micro) {
-            AppIconView().frame(width: 56, height: 56)
+            AppIconView(bundledImage: Bundle.packagedResourceURL("RememBarAppIcon", withExtension: "png").flatMap(NSImage.init(contentsOf:))).frame(width: 56, height: 56)
 
             VStack(spacing: Tokens.micro) {
                 HStack(spacing: Tokens.micro + 1) {
