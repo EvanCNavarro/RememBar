@@ -1,3 +1,4 @@
+import AppKit
 import SwiftUI
 
 /// The root of RememBar's settings window: a toolbar-style tab bar over the selected tab's content.
@@ -24,11 +25,13 @@ struct SettingsRootView: View {
             tabBar
             Divider().overlay(Tokens.line)
             content
-                // Fill width, top-align; height follows the content (the window itself is kept compact
-                // + non-restorable in SettingsWindowController — that's what actually prevents the void).
-                .frame(maxWidth: .infinity, alignment: .topLeading)
+                .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
         }
         .background(Tokens.panel)
+        // Resize the hosting window to hug the CURRENT tab's content height — so About (short) and Term
+        // Families (taller) each get a window that fits, with no vertical void regardless of what height
+        // the window was left at. Re-runs whenever `tab` changes (macOS System-Settings behavior).
+        .background(WindowContentSizer(trigger: tab))
     }
 
     private var tabBar: some View {
@@ -104,5 +107,25 @@ private struct SettingsTabButton: View {
         .onHover { hovered = $0 }
         .accessibilityLabel(tab.title)
         .accessibilityAddTraits(isSelected ? .isSelected : [])
+    }
+}
+
+/// Resizes its hosting `NSWindow` to hug the SwiftUI content's height (width unchanged). Re-fires when
+/// `trigger` (the selected tab) changes, so each tab gets a window that fits — no vertical void, whatever
+/// height the window was left at. Guards against a resize loop by acting only on a real height delta.
+private struct WindowContentSizer: NSViewRepresentable {
+    let trigger: SettingsTab
+
+    func makeNSView(context: Context) -> NSView { NSView() }
+
+    func updateNSView(_ nsView: NSView, context: Context) {
+        // Defer so the newly-selected tab has laid out before we measure it.
+        DispatchQueue.main.async {
+            guard let window = nsView.window, let content = window.contentView else { return }
+            content.layoutSubtreeIfNeeded()
+            let fitted = content.fittingSize.height
+            guard fitted > 1, abs(content.frame.height - fitted) > 1 else { return }
+            window.setContentSize(NSSize(width: window.frame.width, height: fitted))
+        }
     }
 }

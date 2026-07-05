@@ -51,11 +51,10 @@ enum SettingsWindowController {
         delegate = del
         win.makeKeyAndOrderFront(nil)
         NSApp.activate(ignoringOtherApps: true)
-        // Re-assert the compact size AFTER ordering front — restoration/state can resize the window
-        // during makeKeyAndOrderFront, so setting it only before doesn't stick. This is the belt to
-        // isRestorable's suspenders.
-        win.setContentSize(NSSize(width: 400, height: 460))
         window = win
+        // The 460 above is just a sane opening size; `WindowContentSizer` (in SettingsRootView) then
+        // resizes the window to hug the selected tab's content on appear + every tab switch — so the
+        // window always fits its content, with no vertical void, whatever height it opened at.
     }
 
     /// Restores the accessory (menu-bar-only) activation policy when settings close, so RememBar
