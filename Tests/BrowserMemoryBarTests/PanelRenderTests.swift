@@ -86,7 +86,7 @@ struct PanelRenderTests {
         #expect(store.selectedID != nil)
         try render(MemoryPanel(store: store).frame(width: 420).background(Tokens.panel),
                    to: "panel_selected.png")
-        try render(AboutTab(onCheckForUpdates: {}, onUninstall: {}).frame(width: 480, height: 420),
+        try render(AboutTab(onCheckForUpdates: {}, onUninstall: {}).frame(width: 400, height: 420),
                    to: "settings_about.png")
 
         // Empty — the real default panel (just the field + its actual placeholder, no invented copy).

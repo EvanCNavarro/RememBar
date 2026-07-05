@@ -65,10 +65,13 @@ struct AboutTab: View {
                            systemImage: "doc.text")
             }
 
-            Spacer(minLength: 0)
         }
         .padding(Tokens.space + Tokens.micro)
-        .frame(maxWidth: .infinity, maxHeight: .infinity)
+        // Cap the identity column to TermTile's popover width (280) so the header + links render at the
+        // SAME size in both apps — the settings window is ≥380 for the alias editor, but the About need
+        // not stretch to fill it. Centered top in the window.
+        .frame(maxWidth: 280, alignment: .topLeading)
+        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
         .background(Tokens.panel)
         .alert("Uninstall RememBar?", isPresented: $confirmingRemoval) {
             Button("Move to Trash", role: .destructive) { onUninstall?() }

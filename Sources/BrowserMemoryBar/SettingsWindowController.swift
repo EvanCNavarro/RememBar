@@ -28,7 +28,7 @@ enum SettingsWindowController {
         }
         NSApp.setActivationPolicy(.regular)
         let win = NSWindow(
-            contentRect: NSRect(x: 0, y: 0, width: 480, height: 460),
+            contentRect: NSRect(x: 0, y: 0, width: 400, height: 460),
             styleMask: [.titled, .closable, .resizable, .miniaturizable],
             backing: .buffered,
             defer: false
@@ -40,7 +40,7 @@ enum SettingsWindowController {
             onCheckForUpdates: onCheckForUpdates,
             onUninstall: onUninstall
         ))
-        win.setContentSize(NSSize(width: 480, height: 460))
+        win.setContentSize(NSSize(width: 400, height: 460))
         win.center()
         let del = WindowDelegate()
         win.delegate = del
