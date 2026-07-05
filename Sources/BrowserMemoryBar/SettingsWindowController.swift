@@ -35,6 +35,10 @@ enum SettingsWindowController {
         )
         win.title = "RememBar Settings"
         win.isReleasedWhenClosed = false
+        // Don't let macOS restore a stale frame: a resizable window is `isRestorable` by default, so a
+        // once-dragged-tall settings window comes back tall on the next open — overriding the compact
+        // size below and leaving the short About tab a huge vertical void. Always open at the set size.
+        win.isRestorable = false
         win.contentView = NSHostingView(rootView: SettingsRootView(
             catalog: catalog,
             onCheckForUpdates: onCheckForUpdates,
@@ -47,6 +51,10 @@ enum SettingsWindowController {
         delegate = del
         win.makeKeyAndOrderFront(nil)
         NSApp.activate(ignoringOtherApps: true)
+        // Re-assert the compact size AFTER ordering front — restoration/state can resize the window
+        // during makeKeyAndOrderFront, so setting it only before doesn't stick. This is the belt to
+        // isRestorable's suspenders.
+        win.setContentSize(NSSize(width: 400, height: 460))
         window = win
     }
 

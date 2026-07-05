@@ -24,9 +24,8 @@ struct SettingsRootView: View {
             tabBar
             Divider().overlay(Tokens.line)
             content
-                // Width fills; height fits the CURRENT tab's content (no maxHeight:.infinity — that made
-                // NSHostingView size the window to ~screen height, leaving the short About tab with a huge
-                // vertical void). The window now sizes per tab, like macOS System Settings.
+                // Fill width, top-align; height follows the content (the window itself is kept compact
+                // + non-restorable in SettingsWindowController — that's what actually prevents the void).
                 .frame(maxWidth: .infinity, alignment: .topLeading)
         }
         .background(Tokens.panel)
