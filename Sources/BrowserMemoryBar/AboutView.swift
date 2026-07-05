@@ -24,7 +24,7 @@ struct AboutTab: View {
         VStack(spacing: Tokens.space) {
             Spacer(minLength: Tokens.space)
 
-            AppIconView()
+            AppIconView(bundledImage: Bundle.packagedResourceURL("RememBarAppIcon", withExtension: "png").flatMap(NSImage.init(contentsOf:)))
                 .frame(width: 84, height: 84)
 
             VStack(spacing: 3) {
@@ -78,31 +78,6 @@ struct AboutTab: View {
 }
 
 
-/// The app's own icon. Prefers the real AppIcon from the module bundle so it renders correctly in
-/// the dev gallery AND the shipped app — `NSApp.applicationIconImage` is only the real icon once the
-/// app is bundled (a generic folder in `swift run`). Falls back to the runtime icon, then a brand tile.
-struct AppIconView: View {
-    private static let bundledIcon: NSImage? = {
-        guard let url = Bundle.packagedResourceURL("RememBarAppIcon", withExtension: "png") else { return nil }
-        return NSImage(contentsOf: url)
-    }()
-
-    var body: some View {
-        if let icon = Self.bundledIcon ?? NSApplication.shared.applicationIconImage {
-            Image(nsImage: icon)
-                .resizable()
-                .interpolation(.high)
-        } else {
-            RoundedRectangle(cornerRadius: 16, style: .continuous)
-                .fill(Tokens.field)
-                .overlay(
-                    Text("Rb")
-                        .font(.system(size: 28, weight: .bold))
-                        .foregroundStyle(Tokens.muted)
-                )
-        }
-    }
-}
 
 /// Inline "Learn more at  <globe> link <↗>" — the link portion is clickable, brightens and
 /// underlines on hover, and opens in the default browser.
