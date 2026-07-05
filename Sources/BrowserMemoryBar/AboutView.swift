@@ -1,5 +1,5 @@
-import SwiftUI
 import MacFaceKit
+import SwiftUI
 #if canImport(AppKit)
 import AppKit
 #endif
@@ -67,6 +67,3 @@ struct AboutTab: View {
         }
     }
 }
-
-
-

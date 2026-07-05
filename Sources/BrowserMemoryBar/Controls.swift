@@ -1,10 +1,9 @@
-import SwiftUI
 import MacFaceKit
+import SwiftUI
 
 /// The 400faces design tokens now live in MacFaceKit; re-export them module-wide so every
 /// RememBar file keeps referring to `Tokens.x` unchanged (values identical — migration B1).
 typealias Tokens = MacFaceKit.Tokens
-
 
 /// A square icon control — clear, submit, paginate, settings, the About "?" and "…". One height,
 /// radius, and hover response everywhere.
