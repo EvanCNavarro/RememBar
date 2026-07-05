@@ -1,4 +1,5 @@
 import SwiftUI
+import MacFaceKit
 #if canImport(AppKit)
 import AppKit
 #endif
@@ -49,7 +50,7 @@ struct AboutTab: View {
 
             VStack(spacing: Tokens.micro) {
                 if let onCheckForUpdates {
-                    AboutActionRow(title: "Check for Updates", systemImage: "arrow.triangle.2.circlepath",
+                    ActionRow(title: "Check for Updates", systemImage: "arrow.triangle.2.circlepath",
                                    action: onCheckForUpdates)
                 }
                 LearnMoreLink(
@@ -57,7 +58,7 @@ struct AboutTab: View {
                     url: URL(string: "https://ecn.dev/apps/RememBar")!
                 )
                 if onUninstall != nil {
-                    AboutActionRow(title: "Remove RememBar…", systemImage: "trash", destructive: true,
+                    ActionRow(title: "Remove RememBar…", systemImage: "trash", destructive: true,
                                    action: { confirmingRemoval = true })
                 }
             }
@@ -76,53 +77,6 @@ struct AboutTab: View {
     }
 }
 
-/// A full-width action row for the About tab — icon + title with a hover highlight; the destructive
-/// variant reads red, then red fill / white text on hover (the macOS delete-item feel).
-private struct AboutActionRow: View {
-    let title: String
-    let systemImage: String
-    var destructive = false
-    let action: () -> Void
-    @State private var hovered = false
-
-    private var foreground: Color {
-        if destructive { return hovered ? .white : .red }
-        return Tokens.text
-    }
-
-    private var fill: Color {
-        if destructive { return hovered ? .red : Tokens.row }
-        return hovered ? Tokens.rowActive : Tokens.row
-    }
-
-    var body: some View {
-        Button(action: action) {
-            HStack(spacing: Tokens.micro + 2) {
-                Image(systemName: systemImage)
-                    .font(.system(size: 11, weight: .medium))
-                    .frame(width: 15)
-                Text(title)
-                    .fontWeight(.medium)
-                Spacer(minLength: 0)
-            }
-            .font(Tokens.caption)
-            .foregroundStyle(foreground)
-            .padding(.horizontal, Tokens.space)
-            .frame(maxWidth: .infinity)
-            .frame(height: Tokens.controlButton + 4)
-            .background(
-                RoundedRectangle(cornerRadius: Tokens.radius, style: .continuous).fill(fill)
-            )
-            .overlay(
-                RoundedRectangle(cornerRadius: Tokens.radius, style: .continuous)
-                    .stroke(hovered && !destructive ? Tokens.lineStrong : Tokens.line, lineWidth: 1)
-            )
-            .contentShape(Rectangle())
-        }
-        .buttonStyle(.plain)
-        .onHover { hovered = $0 }
-    }
-}
 
 /// The app's own icon. Prefers the real AppIcon from the module bundle so it renders correctly in
 /// the dev gallery AND the shipped app — `NSApp.applicationIconImage` is only the real icon once the
