@@ -98,7 +98,8 @@ private struct CommandField: View {
 
             if store.canClearSearch {
                 IconControlButton(
-                    size: Tokens.control,   // match the field height (see gear, above)
+                    size: Tokens.control,       // match the field height (see gear, above)
+                    radius: Tokens.radius,      // match the field's corner radius (was the default micro=4)
                     action: { withAnimation(.easeInOut(duration: 0.2)) { store.clearSearch() } }, content: {
                         Image(systemName: "xmark")
                             .font(.system(size: 10, weight: .bold))
@@ -106,7 +107,7 @@ private struct CommandField: View {
                 .accessibilityLabel("Clear search and start over")
             }
 
-            IconControlButton(size: Tokens.control, action: store.submitOrOpen) {
+            IconControlButton(size: Tokens.control, radius: Tokens.radius, action: store.submitOrOpen) {
                 ZStack {
                     Text("↵")
                         .font(.system(size: 15, weight: .medium))
