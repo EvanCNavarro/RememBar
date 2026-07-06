@@ -70,71 +70,88 @@ private struct CommandField: View {
     /// bar's spinner off this so editing an already-searched query never looks frozen.
     private var searchInFlight: Bool { store.isSearching || store.isLoading }
 
+    private func clearWithAnimation() {
+        withAnimation(.easeInOut(duration: 0.2)) { store.clearSearch() }
+    }
+
     var body: some View {
         HStack(spacing: Tokens.space) {
-            // The input box — ONLY the globe + text field live in the rounded field container, so the
-            // trailing action buttons aren't nested boxes-inside-a-box.
-            HStack(spacing: Tokens.space) {
-                RememBarGlyph(active: true)
-                    .frame(width: 20)
-                    .foregroundStyle(Tokens.muted)
+            RememBarGlyph(active: true)
+                .frame(width: 20)
+                .foregroundStyle(Tokens.muted)
 
-                TextField(store.prompt, text: $store.inputText)
-                    .textFieldStyle(.plain)
-                    .font(Tokens.body)
-                    .foregroundStyle(Tokens.text)
-                    // Never disabled: live search must stay typeable while a query is in flight.
-                    .focused($focused)
-                    .onChange(of: store.inputText) { store.inputChanged() }
-                    // Keyboard navigation of results while the field keeps focus: arrows move the
-                    // highlight (return .handled so the caret doesn't move), Enter opens the highlighted/
-                    // top result (or searches a stale query), Esc clears an active search.
-                    .onKeyPress(.upArrow) { store.moveSelectionUp(); return .handled }
-                    .onKeyPress(.downArrow) { store.moveSelectionDown(); return .handled }
-                    .onKeyPress(.escape) {
-                        guard store.canClearSearch else { return .ignored }
-                        withAnimation(.easeInOut(duration: 0.2)) { store.clearSearch() }
-                        return .handled
-                    }
-                    .onSubmit(store.submitOrOpen)
-                    .accessibilityLabel("Search files and browser history")
-            }
-            .frame(height: Tokens.control)
-            .padding(.horizontal, Tokens.space)
-            .background(Tokens.field)
-            .clipShape(RoundedRectangle(cornerRadius: Tokens.radius, style: .continuous))
-            .overlay {
-                RoundedRectangle(cornerRadius: Tokens.radius, style: .continuous)
-                    .stroke(focused ? Tokens.lineStrong : Tokens.line, lineWidth: 1)
-            }
+            TextField(store.prompt, text: $store.inputText)
+                .textFieldStyle(.plain)
+                .font(Tokens.body)
+                .foregroundStyle(Tokens.text)
+                // Never disabled: live search must stay typeable while a query is in flight.
+                .focused($focused)
+                .onChange(of: store.inputText) { store.inputChanged() }
+                // Keyboard navigation of results while the field keeps focus: arrows move the
+                // highlight (return .handled so the caret doesn't move), Enter opens the highlighted/
+                // top result (or searches a stale query), Esc clears an active search.
+                .onKeyPress(.upArrow) { store.moveSelectionUp(); return .handled }
+                .onKeyPress(.downArrow) { store.moveSelectionDown(); return .handled }
+                .onKeyPress(.escape) {
+                    guard store.canClearSearch else { return .ignored }
+                    clearWithAnimation()
+                    return .handled
+                }
+                .onSubmit(store.submitOrOpen)
+                .accessibilityLabel("Search files and browser history")
 
-            // Trailing actions — standalone boxes BESIDE the field (same treatment as the gear), not
-            // nested inside it. Clear (when there's a query) + submit/return.
+            // Clear + submit — glyph affordances INSIDE the field (best practice: field-scoped actions
+            // live in the field as trailing glyphs, not nested boxes). Brighten on hover; the return
+            // doubles as the spinner while a search is in flight.
             if store.canClearSearch {
-                IconControlButton(
-                    size: Tokens.control, radius: Tokens.radius,
-                    action: { withAnimation(.easeInOut(duration: 0.2)) { store.clearSearch() } }, content: {
-                        Image(systemName: "xmark")
-                            .font(.system(size: 10, weight: .bold))
-                    })
+                FieldGlyphButton(action: clearWithAnimation) {
+                    Image(systemName: "xmark").font(.system(size: 11, weight: .semibold))
+                }
                 .accessibilityLabel("Clear search and start over")
             }
 
-            IconControlButton(size: Tokens.control, radius: Tokens.radius, action: store.submitOrOpen) {
+            FieldGlyphButton(action: store.submitOrOpen) {
                 ZStack {
-                    Text("↵")
-                        .font(.system(size: 15, weight: .medium))
-                        .opacity(searchInFlight ? 0 : 1)
-
-                    ProgressView()
-                        .controlSize(.mini)
-                        .opacity(searchInFlight ? 1 : 0)
+                    Text("↵").font(.system(size: 15, weight: .medium)).opacity(searchInFlight ? 0 : 1)
+                    ProgressView().controlSize(.mini).opacity(searchInFlight ? 1 : 0)
                 }
             }
             .accessibilityLabel(searchInFlight ? "Searching" : "Search")
         }
+        .frame(height: Tokens.control)
+        .padding(.leading, Tokens.space)
+        .padding(.trailing, Tokens.micro + 2)
+        .background(Tokens.field)
+        .clipShape(RoundedRectangle(cornerRadius: Tokens.radius, style: .continuous))
+        .overlay {
+            RoundedRectangle(cornerRadius: Tokens.radius, style: .continuous)
+                .stroke(focused ? Tokens.lineStrong : Tokens.line, lineWidth: 1)
+        }
         .onAppear {
             focused = true
+        }
+    }
+}
+
+/// A borderless glyph button that lives INSIDE the search field (clear, submit) — no box, so it reads
+/// as part of the field, not a nested control. Muted at rest, brightens to `text` on hover; a 28×28 hit
+/// target (≥24 WCAG AA) with the pointing-hand cursor.
+private struct FieldGlyphButton<Label: View>: View {
+    let action: () -> Void
+    @ViewBuilder var label: Label
+    @State private var hovered = false
+
+    var body: some View {
+        Button(action: action) {
+            label
+                .foregroundStyle(hovered ? Tokens.text : Tokens.muted)
+                .frame(width: 28, height: 28)
+                .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+        .onHover { hovering in
+            hovered = hovering
+            if hovering { NSCursor.pointingHand.set() } else { NSCursor.arrow.set() }
         }
     }
 }
