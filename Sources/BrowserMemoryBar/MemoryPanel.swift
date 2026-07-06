@@ -16,9 +16,10 @@ struct MemoryPanel: View {
                 if let onOpenSettings {
                     // The single settings affordance — a gear that opens the tabbed settings window
                     // (Term Families, About). About moved out of a "?" popover into that window.
-                    // 26pt (controlButton) like every other icon control + the ··· — was the lone 34pt
-                    // outlier (audit #2). Radius stays Tokens.radius to match the ···.
-                    IconControlButton(radius: Tokens.radius, action: onOpenSettings) {
+                    // 34pt (control) to MATCH the search field's height — an icon control matches the
+                    // height of its row, so the search row reads as one uniform band (the header ···
+                    // stays 26 in its own context). Passes WCAG 2.5.8 AA target size (≥24×24).
+                    IconControlButton(size: Tokens.control, radius: Tokens.radius, action: onOpenSettings) {
                         Image(systemName: "gearshape")
                             .font(.system(size: 14, weight: .semibold))
                     }
@@ -97,6 +98,7 @@ private struct CommandField: View {
 
             if store.canClearSearch {
                 IconControlButton(
+                    size: Tokens.control,   // match the field height (see gear, above)
                     action: { withAnimation(.easeInOut(duration: 0.2)) { store.clearSearch() } }, content: {
                         Image(systemName: "xmark")
                             .font(.system(size: 10, weight: .bold))
@@ -104,7 +106,7 @@ private struct CommandField: View {
                 .accessibilityLabel("Clear search and start over")
             }
 
-            IconControlButton(action: store.submitOrOpen) {
+            IconControlButton(size: Tokens.control, action: store.submitOrOpen) {
                 ZStack {
                     Text("↵")
                         .font(.system(size: 15, weight: .medium))
