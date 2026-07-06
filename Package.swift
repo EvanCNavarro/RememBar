@@ -11,10 +11,9 @@ let package = Package(
         .executable(name: "RememBar", targets: ["BrowserMemoryBar"])
     ],
     dependencies: [
-        // Shared 400faces macOS design system. Local path during migration (the kit is a private repo
-        // with no tags yet — a git URL wouldn't resolve reproducibly for a shipping build). Both repos
-        // live on disk; switch to the git URL once the kit is public + tagged. github.com/400faces/MacFaceKit
-        .package(path: "../../../Developer/MacFaceKit")
+        // Shared 400faces macOS design system — public + tagged, so CI (and any fresh clone) resolves it
+        // without a local checkout or credentials.
+        .package(url: "https://github.com/400faces/MacFaceKit.git", from: "0.1.0")
     ],
     targets: [
         .executableTarget(
