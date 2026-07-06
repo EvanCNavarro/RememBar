@@ -133,9 +133,10 @@ private struct CommandField: View {
     }
 }
 
-/// A borderless glyph button that lives INSIDE the search field (clear, submit) — no box, so it reads
-/// as part of the field, not a nested control. Muted at rest, brightens to `text` on hover; a 28×28 hit
-/// target (≥24 WCAG AA) with the pointing-hand cursor.
+/// A borderless glyph button that lives INSIDE the search field (clear, submit) — no box at rest, so it
+/// reads as part of the field, not a nested control. Follows the SYSTEM hover vocabulary: on hover the
+/// glyph brightens `muted`→`text` AND a rounded `rowActive` fill appears (the same hover color the boxed
+/// icon controls use, minus the always-on border). 28×28 hit target (≥24 WCAG AA), pointing-hand cursor.
 private struct FieldGlyphButton<Label: View>: View {
     let action: () -> Void
     @ViewBuilder var label: Label
@@ -146,6 +147,10 @@ private struct FieldGlyphButton<Label: View>: View {
             label
                 .foregroundStyle(hovered ? Tokens.text : Tokens.muted)
                 .frame(width: 28, height: 28)
+                .background(
+                    RoundedRectangle(cornerRadius: Tokens.radius, style: .continuous)
+                        .fill(hovered ? Tokens.rowActive : Color.clear)
+                )
                 .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
