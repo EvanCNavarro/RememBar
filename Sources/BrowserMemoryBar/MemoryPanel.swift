@@ -72,34 +72,47 @@ private struct CommandField: View {
 
     var body: some View {
         HStack(spacing: Tokens.space) {
-            RememBarGlyph(active: true)
-                .frame(width: 20)
-                .foregroundStyle(Tokens.muted)
+            // The input box — ONLY the globe + text field live in the rounded field container, so the
+            // trailing action buttons aren't nested boxes-inside-a-box.
+            HStack(spacing: Tokens.space) {
+                RememBarGlyph(active: true)
+                    .frame(width: 20)
+                    .foregroundStyle(Tokens.muted)
 
-            TextField(store.prompt, text: $store.inputText)
-                .textFieldStyle(.plain)
-                .font(Tokens.body)
-                .foregroundStyle(Tokens.text)
-                // Never disabled: live search must stay typeable while a query is in flight.
-                .focused($focused)
-                .onChange(of: store.inputText) { store.inputChanged() }
-                // Keyboard navigation of results while the field keeps focus: arrows move the
-                // highlight (return .handled so the caret doesn't move), Enter opens the highlighted/
-                // top result (or searches a stale query), Esc clears an active search.
-                .onKeyPress(.upArrow) { store.moveSelectionUp(); return .handled }
-                .onKeyPress(.downArrow) { store.moveSelectionDown(); return .handled }
-                .onKeyPress(.escape) {
-                    guard store.canClearSearch else { return .ignored }
-                    withAnimation(.easeInOut(duration: 0.2)) { store.clearSearch() }
-                    return .handled
-                }
-                .onSubmit(store.submitOrOpen)
-                .accessibilityLabel("Search files and browser history")
+                TextField(store.prompt, text: $store.inputText)
+                    .textFieldStyle(.plain)
+                    .font(Tokens.body)
+                    .foregroundStyle(Tokens.text)
+                    // Never disabled: live search must stay typeable while a query is in flight.
+                    .focused($focused)
+                    .onChange(of: store.inputText) { store.inputChanged() }
+                    // Keyboard navigation of results while the field keeps focus: arrows move the
+                    // highlight (return .handled so the caret doesn't move), Enter opens the highlighted/
+                    // top result (or searches a stale query), Esc clears an active search.
+                    .onKeyPress(.upArrow) { store.moveSelectionUp(); return .handled }
+                    .onKeyPress(.downArrow) { store.moveSelectionDown(); return .handled }
+                    .onKeyPress(.escape) {
+                        guard store.canClearSearch else { return .ignored }
+                        withAnimation(.easeInOut(duration: 0.2)) { store.clearSearch() }
+                        return .handled
+                    }
+                    .onSubmit(store.submitOrOpen)
+                    .accessibilityLabel("Search files and browser history")
+            }
+            .frame(height: Tokens.control)
+            .padding(.horizontal, Tokens.space)
+            .background(Tokens.field)
+            .clipShape(RoundedRectangle(cornerRadius: Tokens.radius, style: .continuous))
+            .overlay {
+                RoundedRectangle(cornerRadius: Tokens.radius, style: .continuous)
+                    .stroke(focused ? Tokens.lineStrong : Tokens.line, lineWidth: 1)
+            }
 
+            // Trailing actions — standalone boxes BESIDE the field (same treatment as the gear), not
+            // nested inside it. Clear (when there's a query) + submit/return.
             if store.canClearSearch {
                 IconControlButton(
-                    size: Tokens.control,       // match the field height (see gear, above)
-                    radius: Tokens.radius,      // match the field's corner radius (was the default micro=4)
+                    size: Tokens.control, radius: Tokens.radius,
                     action: { withAnimation(.easeInOut(duration: 0.2)) { store.clearSearch() } }, content: {
                         Image(systemName: "xmark")
                             .font(.system(size: 10, weight: .bold))
@@ -119,15 +132,6 @@ private struct CommandField: View {
                 }
             }
             .accessibilityLabel(searchInFlight ? "Searching" : "Search")
-        }
-        .frame(height: Tokens.control)
-        .padding(.leading, Tokens.space)
-        .padding(.trailing, Tokens.micro)
-        .background(Tokens.field)
-        .clipShape(RoundedRectangle(cornerRadius: Tokens.radius, style: .continuous))
-        .overlay {
-            RoundedRectangle(cornerRadius: Tokens.radius, style: .continuous)
-                .stroke(focused ? Tokens.lineStrong : Tokens.line, lineWidth: 1)
         }
         .onAppear {
             focused = true
