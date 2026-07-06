@@ -1,5 +1,6 @@
 #if DEBUG
 import AppKit
+import MacFaceKit
 import SwiftUI
 
 /// Opens (and retains) the dev gallery window. Called from `RememBarApp.init()` via a main-queue
@@ -45,10 +46,13 @@ struct GalleryView: View {
         case results = "Search — results"
         case loading = "Search — loading"
         case settings = "Settings — tabbed window"
+        case updatePermission = "Update — permission"
         case updateAvailable = "Update — available"
         case updateChecking = "Update — checking"
+        case updateProgress = "Update — downloading"
         case updateReady = "Update — ready to install"
         case updateUpToDate = "Update — up to date"
+        case updateError = "Update — error"
         var id: String { rawValue }
     }
 
@@ -62,7 +66,8 @@ struct GalleryView: View {
         catalog.update(families: [["evan", "ecn", "navarro"], ["mom", "mother"]])
         return catalog
     }()
-    private static let updateStages: [Stage] = [.updateAvailable, .updateChecking, .updateReady, .updateUpToDate]
+    private static let updateStages: [Stage] = [.updatePermission, .updateAvailable, .updateChecking,
+                                                .updateProgress, .updateReady, .updateUpToDate, .updateError]
     private static let sampleReleaseNotes = [
         "Term families (aliases) across files, history & password managers",
         "One-click \"Uninstall RememBar\" uninstaller",
@@ -172,18 +177,39 @@ struct GalleryView: View {
         case .settings:
             SettingsRootView(catalog: Self.gallerySettingsCatalog, onCheckForUpdates: {}, onUninstall: {})
                 .frame(width: 480, height: 460)
+        case .updatePermission:
+            GalleryDialogFrame {
+                UpdateDialog.permission(appName: RememBarPaths.appName, onAllow: {}, onDecline: {})
+                    .icon(rememBarUpdateIcon)
+            }
         case .updateAvailable:
             GalleryDialogFrame {
-                UpdateDialog.available(version: "0.2.0", currentVersion: "0.1.0",
+                UpdateDialog.available(appName: RememBarPaths.appName, version: "0.2.0", currentVersion: "0.1.0",
                                        notes: Self.sampleReleaseNotes, notesExpanded: $notesExpanded,
-                                       onInstall: {}, onRemindLater: {})
+                                       onInstall: {}, onRemindLater: {}).icon(rememBarUpdateIcon)
             }
         case .updateChecking:
-            GalleryDialogFrame { UpdateDialog.checking(onCancel: {}) }
+            GalleryDialogFrame { UpdateDialog.checking(onCancel: {}).icon(rememBarUpdateIcon) }
+        case .updateProgress:
+            GalleryDialogFrame {
+                UpdateDialog.progress(appName: RememBarPaths.appName, heading: "Downloading update…",
+                                      version: "0.2.0", fraction: 0.62, onCancel: {}).icon(rememBarUpdateIcon)
+            }
         case .updateReady:
-            GalleryDialogFrame { UpdateDialog.ready(version: "0.2.0", onRestart: {}) }
+            GalleryDialogFrame {
+                UpdateDialog.ready(appName: RememBarPaths.appName, version: "0.2.0", onRestart: {})
+                    .icon(rememBarUpdateIcon)
+            }
         case .updateUpToDate:
-            GalleryDialogFrame { UpdateDialog.upToDate(version: "0.2.0", onOK: {}) }
+            GalleryDialogFrame {
+                UpdateDialog.upToDate(appName: RememBarPaths.appName, version: "0.2.0", onOK: {})
+                    .icon(rememBarUpdateIcon)
+            }
+        case .updateError:
+            GalleryDialogFrame {
+                UpdateDialog.error(message: "Couldn't reach the update server. Check your connection and try again.",
+                                   onOK: {}).icon(rememBarUpdateIcon)
+            }
         }
     }
 }
@@ -227,6 +253,19 @@ private enum GallerySampleData {
             MemorySearchSourceStatus(id: "chrome", sourceName: "Chrome", state: .searched, detail: "522 visits")
         ]
         return MemorySearchResponse(results: results, sourceStatuses: statuses)
+    }
+}
+
+/// A plain rounded card that mocks the dialog window in the gallery (the real driver uses a system
+/// window). No title bar — the header line carries the state.
+struct GalleryDialogFrame<Content: View>: View {
+    @ViewBuilder var content: Content
+    var body: some View {
+        content
+            .fixedSize()
+            .background(Tokens.updateWindow)
+            .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
+            .overlay(RoundedRectangle(cornerRadius: 12, style: .continuous).stroke(.black.opacity(0.45), lineWidth: 1))
     }
 }
 #endif

@@ -1,4 +1,5 @@
 import AppKit
+import MacFaceKit
 import Sparkle
 import SwiftUI
 
@@ -29,30 +30,38 @@ private struct UpdateFlowRootView: View {
     @ObservedObject var model: UpdateFlowModel
 
     var body: some View {
-        dialog.fixedSize()
+        // The shared kit dialog, with RememBar's name (strings) + icon (applied once) — see MacFaceKit.
+        dialog.icon(rememBarUpdateIcon).fixedSize()
     }
 
     private var dialog: UpdateDialog {
+        let name = RememBarPaths.appName
         switch model.screen {
         case let .permission(allow, decline):
-            return .permission(onAllow: allow, onDecline: decline)
+            return .permission(appName: name, onAllow: allow, onDecline: decline)
         case let .checking(cancel):
             return .checking(onCancel: cancel)
         case let .available(version, current, remindLater, install):
-            return .available(version: version, currentVersion: current,
+            return .available(appName: name, version: version, currentVersion: current,
                               notes: model.releaseNotes ?? [], notesExpanded: $model.notesExpanded,
                               onInstall: install, onRemindLater: remindLater)
         case let .progress(heading, cancel):
-            return .progress(heading: heading, version: model.latestVersion,
+            return .progress(appName: name, heading: heading, version: model.latestVersion,
                              fraction: model.fraction, onCancel: cancel)
         case let .ready(version, install):
-            return .ready(version: version, onRestart: install)
+            return .ready(appName: name, version: version, onRestart: install)
         case let .upToDate(version, ok):
-            return .upToDate(version: version, onOK: ok)
+            return .upToDate(appName: name, version: version, onOK: ok)
         case let .error(message, ok):
             return .error(message: message, onOK: ok)
         }
     }
+}
+
+/// RememBar's app icon for the update dialog (its own bundled resource, so it renders under `swift run`
+/// too). Shared by the live driver's root view + the dev gallery.
+var rememBarUpdateIcon: NSImage? {
+    Bundle.packagedResourceURL("RememBarAppIcon", withExtension: "png").flatMap(NSImage.init(contentsOf:))
 }
 
 /// RememBar's custom Sparkle user driver: presents the app's own update dialogs (UpdateFlowViews) in
@@ -89,7 +98,7 @@ final class RememBarUserDriver: NSObject, SPUUserDriver, NSWindowDelegate {
             )
             win.titlebarAppearsTransparent = true          // dark titlebar blends with the content
             win.appearance = NSAppearance(named: .darkAqua) // real, hover-capable traffic lights
-            win.backgroundColor = NSColor(updateWindowBG)
+            win.backgroundColor = Tokens.nsUpdateWindow
             win.isMovableByWindowBackground = true
             win.isReleasedWhenClosed = false
             win.delegate = self
