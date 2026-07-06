@@ -447,7 +447,9 @@ struct IntegrationTests {
         printf '[{"id":"facebook-item","title":"Facebook",'
         printf '"vault":{"id":"private-vault","name":"Private"},"category":"LOGIN"}]'
         """)
-        let lister = OnePasswordCLIItemLister(executableURL: scriptURL, timeout: .seconds(2))
+        // Generous hang-guard, NOT an SLA — the suite's process-spawn is itself load-sensitive, so even
+        // a 1-item list can race a 2s ceiling under saturation (same false-fail class as the 2500-item test).
+        let lister = OnePasswordCLIItemLister(executableURL: scriptURL, timeout: .seconds(30))
 
         let items = try await lister.listItems()
         let args = try String(contentsOf: argsURL, encoding: .utf8)
@@ -475,7 +477,9 @@ struct IntegrationTests {
         done
         printf ']'
         """)
-        let lister = OnePasswordCLIItemLister(executableURL: scriptURL, timeout: .seconds(2))
+        // Generous hang-guard (matches the cancel test below), NOT an SLA: a 2s ceiling races the
+        // 2500-item script + drain under CPU load and false-fails with .timedOut (reproduced 3/3).
+        let lister = OnePasswordCLIItemLister(executableURL: scriptURL, timeout: .seconds(30))
 
         let items = try await lister.listItems()
 

@@ -16,7 +16,9 @@ var rememBarUpdateIcon: NSImage? {
 /// every security-critical step (download, EdDSA verification, atomic install, relaunch).
 @MainActor
 final class RememBarUserDriver: NSObject, SPUUserDriver {
-    private let controller = UpdateWindowController(appName: RememBarPaths.appName, icon: rememBarUpdateIcon)
+    // internal (not private): the adapter-wiring test drives the SPUUserDriver callbacks and asserts
+    // this controller's state morphs correctly — the only RememBar-owned code in the download flow.
+    let controller = UpdateWindowController(appName: RememBarPaths.appName, icon: rememBarUpdateIcon)
 
     /// The running app's version, shown on the "you have X" / up-to-date lines. RememBar's own fallback
     /// ("this version") — deliberately distinct from `MacFaceKit.AppInfo`'s "dev".
