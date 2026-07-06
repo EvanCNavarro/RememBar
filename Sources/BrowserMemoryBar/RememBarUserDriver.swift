@@ -1,215 +1,69 @@
 import AppKit
 import MacFaceKit
 import Sparkle
-import SwiftUI
-
-/// The model backing the update window. The driver mutates `screen` (variant transitions) and
-/// `fraction` (progress ticks) separately, so a flood of download-progress callbacks updates the bar
-/// in place — no re-hosting the SwiftUI on every chunk.
-@MainActor
-final class UpdateFlowModel: ObservableObject {
-    enum Screen {
-        case permission(allow: () -> Void, decline: () -> Void)
-        case checking(cancel: () -> Void)
-        case available(version: String, current: String, remindLater: () -> Void, install: () -> Void)
-        case progress(heading: String, cancel: (() -> Void)?)
-        case ready(version: String, install: () -> Void)
-        case upToDate(version: String, ok: () -> Void)
-        case error(message: String, ok: () -> Void)
-    }
-
-    @Published var screen: Screen = .checking(cancel: {})
-    @Published var fraction: Double?
-    @Published var releaseNotes: [String]?
-    @Published var notesExpanded = true
-    /// The version being installed (from the appcast), shown on the progress + ready screens.
-    var latestVersion = "the update"
-}
-
-private struct UpdateFlowRootView: View {
-    @ObservedObject var model: UpdateFlowModel
-
-    var body: some View {
-        // The shared kit dialog, with RememBar's name (strings) + icon (applied once) — see MacFaceKit.
-        dialog.icon(rememBarUpdateIcon).fixedSize()
-    }
-
-    private var dialog: UpdateDialog {
-        let name = RememBarPaths.appName
-        switch model.screen {
-        case let .permission(allow, decline):
-            return .permission(appName: name, onAllow: allow, onDecline: decline)
-        case let .checking(cancel):
-            return .checking(onCancel: cancel)
-        case let .available(version, current, remindLater, install):
-            return .available(appName: name, version: version, currentVersion: current,
-                              notes: model.releaseNotes ?? [], notesExpanded: $model.notesExpanded,
-                              onInstall: install, onRemindLater: remindLater)
-        case let .progress(heading, cancel):
-            return .progress(appName: name, heading: heading, version: model.latestVersion,
-                             fraction: model.fraction, onCancel: cancel)
-        case let .ready(version, install):
-            return .ready(appName: name, version: version, onRestart: install)
-        case let .upToDate(version, ok):
-            return .upToDate(appName: name, version: version, onOK: ok)
-        case let .error(message, ok):
-            return .error(message: message, onOK: ok)
-        }
-    }
-}
 
 /// RememBar's app icon for the update dialog (its own bundled resource, so it renders under `swift run`
-/// too). Shared by the live driver's root view + the dev gallery.
+/// too). Shared by the driver + the dev gallery.
 var rememBarUpdateIcon: NSImage? {
     Bundle.packagedResourceURL("RememBarAppIcon", withExtension: "png").flatMap(NSImage.init(contentsOf:))
 }
 
-/// RememBar's custom Sparkle user driver: presents the app's own update dialogs (UpdateFlowViews) in
-/// a borderless floating window instead of Sparkle's stock UI. Sparkle still performs every
-/// security-critical step (download, EdDSA verification, atomic install, relaunch); this only draws
-/// the flow and relays the user's choice. All 16 required SPUUserDriver methods are implemented; the
-/// three `acknowledgement` methods bridge to Swift as `async` and use continuations.
+/// RememBar's custom Sparkle user driver — a THIN adapter that translates Sparkle's `SPUUserDriver`
+/// callbacks into the shared `MacFaceKit.UpdateWindowController`'s semantic `show*` API. All the window
+/// hosting, morph, escape/acknowledgement bookkeeping and progress math live once in the controller; this
+/// file is pure Sparkle→controller translation (the irreducible Sparkle-coupled shell, kept app-local
+/// because Sparkle is a vendored binaryTarget that can't live in the public kit). Sparkle still performs
+/// every security-critical step (download, EdDSA verification, atomic install, relaunch).
 @MainActor
-final class RememBarUserDriver: NSObject, SPUUserDriver, NSWindowDelegate {
-    private let model = UpdateFlowModel()
-    private var window: NSWindow?
-    private var expectedLength: UInt64 = 0
-    private var receivedLength: UInt64 = 0
-    /// What to do if the user closes the window via the traffic-light control (send the appropriate
-    /// cancel/dismiss/acknowledge). Cleared once fired so it can't run twice.
-    private var escape: (() -> Void)?
-    /// The pending acknowledgement continuation for the async (not-found / error) states.
-    private var pendingAck: CheckedContinuation<Void, Never>?
+final class RememBarUserDriver: NSObject, SPUUserDriver {
+    private let controller = UpdateWindowController(appName: RememBarPaths.appName, icon: rememBarUpdateIcon)
 
+    /// The running app's version, shown on the "you have X" / up-to-date lines. RememBar's own fallback
+    /// ("this version") — deliberately distinct from `MacFaceKit.AppInfo`'s "dev".
     private var currentAppVersion: String {
         Bundle.main.marketingVersion ?? "this version"
-    }
-
-    // MARK: Window
-
-    private func present() {
-        let firstShow = (window == nil)
-        if firstShow {
-            let win = NSWindow(
-                contentRect: NSRect(x: 0, y: 0, width: 400, height: 220),
-                styleMask: [.titled, .closable, .miniaturizable],
-                backing: .buffered,
-                defer: false
-            )
-            win.titlebarAppearsTransparent = true          // dark titlebar blends with the content
-            win.appearance = NSAppearance(named: .darkAqua) // real, hover-capable traffic lights
-            win.backgroundColor = Tokens.nsUpdateWindow
-            win.isMovableByWindowBackground = true
-            win.isReleasedWhenClosed = false
-            win.delegate = self
-            win.contentView = NSHostingView(rootView: UpdateFlowRootView(model: model))
-            window = win
-        }
-        window?.title = ""   // no "Software Update" chrome — the header line carries the state
-        window?.makeKeyAndOrderFront(nil)
-        NSApp.activate(ignoringOtherApps: true)
-        if firstShow { window?.center() }
-        syncWindowSize(animated: !firstShow)
-    }
-
-    /// Fit the window to the current SwiftUI content, preserving the window's center so it grows and
-    /// shrinks in place (a smooth morph between states rather than a jump). Deferred a runloop tick so
-    /// SwiftUI has laid out first.
-    private func syncWindowSize(animated: Bool) {
-        DispatchQueue.main.async { [weak self] in
-            guard let self, let window = self.window, let content = window.contentView else { return }
-            let size = content.fittingSize
-            guard size.width > 0, size.height > 0 else { return }
-            let old = window.frame
-            var newFrame = window.frameRect(forContentRect: NSRect(origin: .zero, size: size))
-            newFrame.origin = NSPoint(x: old.midX - newFrame.width / 2, y: old.midY - newFrame.height / 2)
-            window.setFrame(newFrame, display: true, animate: animated)
-        }
-    }
-
-    private func setScreen(_ screen: UpdateFlowModel.Screen, escape: (() -> Void)? = nil) {
-        self.escape = escape
-        withAnimation(.easeInOut(duration: 0.22)) { model.screen = screen }
-        present()
-    }
-
-    /// Programmatic close (a button / Sparkle dismiss). Detaches the delegate first so the user-close
-    /// path (`windowWillClose`) doesn't also fire the escape action.
-    private func close() {
-        // Resume any pending acknowledgement continuation so its async task can't leak if Sparkle
-        // tears the dialog down before the user acknowledges (nil-guarded — a no-op in the normal
-        // button path where the ack already resumed).
-        resumeAck()
-        escape = nil
-        window?.delegate = nil
-        window?.close()
-        window = nil
-    }
-
-    private func resumeAck() {
-        if let continuation = pendingAck {
-            pendingAck = nil
-            continuation.resume()
-        }
-    }
-
-    /// User clicked the window's close control. Fire the escape action (cancel / dismiss / ack) once.
-    func windowWillClose(_ notification: Notification) {
-        let action = escape
-        escape = nil
-        window = nil
-        action?()
     }
 
     // MARK: SPUUserDriver — required
 
     func show(_ request: SPUUpdatePermissionRequest,
               reply: @escaping (SUUpdatePermissionResponse) -> Void) {
-        let allow = {
-            self.escape = nil
-            reply(SUUpdatePermissionResponse(automaticUpdateChecks: true, sendSystemProfile: false))
-        }
-        let decline = {
-            self.escape = nil
-            reply(SUUpdatePermissionResponse(automaticUpdateChecks: false, sendSystemProfile: false))
-        }
-        setScreen(.permission(allow: allow, decline: decline), escape: decline)
+        controller.showPermission(
+            onAllow: { reply(SUUpdatePermissionResponse(automaticUpdateChecks: true, sendSystemProfile: false)) },
+            onDecline: { reply(SUUpdatePermissionResponse(automaticUpdateChecks: false, sendSystemProfile: false)) })
     }
 
     func showUserInitiatedUpdateCheck(cancellation: @escaping () -> Void) {
-        model.fraction = nil
-        model.releaseNotes = nil
-        let cancel = { self.escape = nil; cancellation() }
-        setScreen(.checking(cancel: cancel), escape: cancel)
+        controller.showChecking(onCancel: cancellation)
     }
 
     func showUpdateFound(with appcastItem: SUAppcastItem, state: SPUUserUpdateState,
                          reply: @escaping (SPUUserUpdateChoice) -> Void) {
-        model.latestVersion = appcastItem.displayVersionString
         // Embedded release notes ride on the appcast item and are NOT delivered via
-        // showUpdateReleaseNotes — Sparkle only calls that for a downloaded releaseNotesLink
-        // (SPUUIBasedUpdateDriver guards it on releaseNotesURL != nil). Read them here so "What's new"
-        // populates for the common embedded-notes case (generate_appcast --embed-release-notes).
+        // showUpdateReleaseNotes — Sparkle only calls that for a downloaded releaseNotesLink. Read them
+        // here so "What's new" populates for the common embedded-notes case
+        // (generate_appcast --embed-release-notes); a downloaded link arrives later via
+        // showUpdateReleaseNotes.
+        var notes: [String] = []
         if appcastItem.releaseNotesURL == nil, let description = appcastItem.itemDescription {
-            model.releaseNotes = ReleaseNotesParser.items(
+            notes = ReleaseNotesParser.items(
                 from: description,
-                format: ReleaseNotesFormat(sparkleFormat: appcastItem.itemDescriptionFormat))
+                format: ReleaseNotesFormat(sparkleFormat: appcastItem.itemDescriptionFormat)) ?? []
         }
-        setScreen(.available(
+        controller.showAvailable(
             version: appcastItem.displayVersionString,
-            current: currentAppVersion,
+            currentVersion: currentAppVersion,
+            notes: notes,
+            onInstall: { reply(.install) },
             // "Remind Me Later" defers (Sparkle re-prompts on the next check) — NOT .skip, which would
             // permanently skip this version and never remind, contradicting the label.
-            remindLater: { self.escape = nil; reply(.dismiss) },
-            install: { self.escape = nil; reply(.install) }
-        ), escape: { reply(.dismiss) })
+            onRemindLater: { reply(.dismiss) })
     }
 
     func showUpdateReleaseNotes(with downloadData: SPUDownloadData) {
         // The downloaded-link path — Sparkle delivers these as HTML data.
         guard let items = ReleaseNotesParser.items(from: downloadData.data) else { return }
-        withAnimation(.easeInOut(duration: 0.22)) { model.releaseNotes = items }
-        syncWindowSize(animated: true)
+        controller.updateReleaseNotes(items)
     }
 
     func showUpdateReleaseNotesFailedToDownloadWithError(_ error: Error) {
@@ -217,69 +71,53 @@ final class RememBarUserDriver: NSObject, SPUUserDriver, NSWindowDelegate {
     }
 
     func showUpdateNotFoundWithError(_ error: Error) async {
-        await withCheckedContinuation { continuation in
-            pendingAck = continuation
-            let ack = { self.resumeAck(); self.close() }
-            setScreen(.upToDate(version: currentAppVersion, ok: ack), escape: { self.resumeAck() })
-        }
+        await controller.showUpToDate(version: currentAppVersion)
     }
 
     func showUpdaterError(_ error: Error) async {
-        await withCheckedContinuation { continuation in
-            pendingAck = continuation
-            let ack = { self.resumeAck(); self.close() }
-            setScreen(.error(message: error.localizedDescription, ok: ack), escape: { self.resumeAck() })
-        }
+        await controller.showError(message: error.localizedDescription)
     }
 
     func showDownloadInitiated(cancellation: @escaping () -> Void) {
-        expectedLength = 0
-        receivedLength = 0
-        model.fraction = 0
-        let cancel = { self.escape = nil; cancellation() }
-        setScreen(.progress(heading: "Downloading update…", cancel: cancel), escape: cancel)
+        controller.showDownloadStarting(onCancel: cancellation)
     }
 
     func showDownloadDidReceiveExpectedContentLength(_ expectedContentLength: UInt64) {
-        expectedLength = expectedContentLength
+        controller.setExpectedContentLength(expectedContentLength)
     }
 
     func showDownloadDidReceiveData(ofLength length: UInt64) {
-        receivedLength += length
-        model.fraction = expectedLength > 0 ? min(1, Double(receivedLength) / Double(expectedLength)) : nil
+        controller.addReceivedBytes(length)
     }
 
     func showDownloadDidStartExtractingUpdate() {
-        model.fraction = 0
-        setScreen(.progress(heading: "Preparing update…", cancel: nil))
+        controller.showPreparing()
     }
 
     func showExtractionReceivedProgress(_ progress: Double) {
-        model.fraction = progress
+        controller.updateProgress(progress)
     }
 
     func showReady(toInstallAndRelaunch reply: @escaping (SPUUserUpdateChoice) -> Void) {
-        setScreen(.ready(version: model.latestVersion, install: { self.escape = nil; reply(.install) }),
-                  escape: { reply(.dismiss) })
+        controller.showReady(onRestart: { reply(.install) }, onDismiss: { reply(.dismiss) })
     }
 
     func showInstallingUpdate(withApplicationTerminated applicationTerminated: Bool,
                               retryTerminatingApplication: @escaping () -> Void) {
-        model.fraction = nil
-        setScreen(.progress(heading: "Installing…", cancel: nil))
+        controller.showInstalling()
     }
 
     func showUpdateInstalledAndRelaunched(_ relaunched: Bool) async {
-        close()
+        controller.close()
     }
 
     func dismissUpdateInstallation() {
-        close()
+        controller.close()
     }
 
     // MARK: SPUUserDriver — optional
 
     func showUpdateInFocus() {
-        present()
+        controller.showInFocus()
     }
 }
