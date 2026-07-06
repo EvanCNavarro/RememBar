@@ -51,7 +51,10 @@ func eventuallyDiagnosticEvents(
     at url: URL,
     prefix: String,
     count expectedCount: Int,
-    attempts: Int = 50
+    // 200 × 20ms = a 4s budget. Polling returns as soon as the events land, so a big budget costs the
+    // happy path nothing — it only prevents a false-fail when a loaded machine (e.g. the app running
+    // alongside, or a concurrent build) starves the async work past a tighter window.
+    attempts: Int = 200
 ) async -> [DecodedDiagnosticEvent] {
     var latest: [DecodedDiagnosticEvent] = []
     for _ in 0..<attempts {
@@ -65,8 +68,14 @@ func eventuallyDiagnosticEvents(
     return latest
 }
 
+/// Polls `condition` until it's true or the budget runs out. The budget is DELIBERATELY generous
+/// (200 × 50ms = 10s) because it's a false-fail ceiling, NOT an asserted latency: the loop returns the
+/// instant the condition holds (~one tick on an idle machine), so a large ceiling costs the happy path
+/// nothing while preventing a flake when a loaded machine — the app running alongside, a concurrent
+/// build — starves the async work past a tighter window. (The reproduced flake: `rapidTypingCoalesces`
+/// exceeded the old 2.5s ceiling with RememBar live.) A genuine hang still fails, just at 10s.
 func eventually(
-    attempts: Int = 50,
+    attempts: Int = 200,
     interval: Duration = .milliseconds(50),
     _ condition: @escaping () async -> Bool
 ) async -> Bool {
