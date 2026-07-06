@@ -6,8 +6,8 @@
       "kind" : "remoteSourceControl",
       "location" : "https://github.com/400faces/MacFaceKit.git",
       "state" : {
-        "revision" : "ea9d6c6737612365001b78f6845ddbaee51d355a",
-        "version" : "0.3.0"
+        "revision" : "29deba58ac2b4a229e73d24e610f718c5f6853f4",
+        "version" : "0.3.1"
       }
     }
   ],

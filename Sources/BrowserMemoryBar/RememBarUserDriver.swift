@@ -39,21 +39,15 @@ final class RememBarUserDriver: NSObject, SPUUserDriver {
 
     func showUpdateFound(with appcastItem: SUAppcastItem, state: SPUUserUpdateState,
                          reply: @escaping (SPUUserUpdateChoice) -> Void) {
-        // Embedded release notes ride on the appcast item and are NOT delivered via
-        // showUpdateReleaseNotes — Sparkle only calls that for a downloaded releaseNotesLink. Read them
-        // here so "What's new" populates for the common embedded-notes case
-        // (generate_appcast --embed-release-notes); a downloaded link arrives later via
-        // showUpdateReleaseNotes.
-        var notes: [String] = []
-        if appcastItem.releaseNotesURL == nil, let description = appcastItem.itemDescription {
-            notes = ReleaseNotesParser.items(
-                from: description,
-                format: ReleaseNotesFormat(sparkleFormat: appcastItem.itemDescriptionFormat)) ?? []
-        }
         controller.showAvailable(
             version: appcastItem.displayVersionString,
             currentVersion: currentAppVersion,
-            notes: notes,
+            // Embedded notes only (a downloaded releaseNotesLink arrives later via showUpdateReleaseNotes);
+            // the gate + parse live once in the kit.
+            notes: ReleaseNotesParser.embeddedItems(
+                releaseNotesURL: appcastItem.releaseNotesURL,
+                description: appcastItem.itemDescription,
+                format: ReleaseNotesFormat(sparkleFormat: appcastItem.itemDescriptionFormat)),
             onInstall: { reply(.install) },
             // "Remind Me Later" defers (Sparkle re-prompts on the next check) — NOT .skip, which would
             // permanently skip this version and never remind, contradicting the label.
