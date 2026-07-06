@@ -1,3 +1,4 @@
+import MacFaceKit
 import SwiftUI
 
 /// The term-families editor: one card per family. Each card has a header line (the family's identity
@@ -130,9 +131,9 @@ private struct FamilyCard: View {
                         .lineLimit(1)
                 }
                 Spacer(minLength: Tokens.space)
-                HoverIconButton(
+                GhostIconButton(
                     systemName: "trash", size: 11,
-                    restColor: Tokens.quiet, hoverColor: .red,
+                    restColor: Tokens.quiet, hoverColor: Tokens.destructive,
                     action: onRemoveFamily
                 )
                 .help("Remove this family")
@@ -206,31 +207,6 @@ private struct AddWordField: View {
     }
 }
 
-/// A small inline icon action that brightens on hover with a comfortable hit target — the editor's
-/// counterpart to `IconControlButton` for icons smaller than a full control (remove word, delete
-/// family). Keeps the codebase's "icons brighten on hover" idiom instead of a dead `.plain` button.
-private struct HoverIconButton: View {
-    let systemName: String
-    var size: CGFloat = 11
-    var restColor: Color = Tokens.quiet
-    var hoverColor: Color = Tokens.text
-    var hitSize: CGFloat = 20
-    let action: () -> Void
-    @State private var hovered = false
-
-    var body: some View {
-        Button(action: action) {
-            Image(systemName: systemName)
-                .font(.system(size: size, weight: .semibold))
-                .foregroundStyle(hovered ? hoverColor : restColor)
-                .frame(width: hitSize, height: hitSize)
-                .contentShape(Rectangle())
-        }
-        .buttonStyle(.plain)
-        .onHover { hovered = $0 }
-    }
-}
-
 /// A single word token with a remove affordance.
 private struct WordChip: View {
     let word: String
@@ -242,10 +218,10 @@ private struct WordChip: View {
                 .font(Tokens.caption)
                 .foregroundStyle(Tokens.text)
                 .lineLimit(1)
-            HoverIconButton(
-                systemName: "xmark", size: 9,
+            GhostIconButton(
+                systemName: "xmark", size: 9, hitSize: 16,
                 restColor: Tokens.muted, hoverColor: Tokens.text,
-                hitSize: 16, action: onRemove
+                action: onRemove
             )
             .accessibilityLabel("Remove \(word)")
         }
