@@ -1,3 +1,4 @@
+import MacFaceKit
 import SwiftUI
 #if canImport(AppKit)
 import AppKit
@@ -104,13 +105,12 @@ private struct CommandField: View {
             // live in the field as trailing glyphs, not nested boxes). Brighten on hover; the return
             // doubles as the spinner while a search is in flight.
             if store.canClearSearch {
-                FieldGlyphButton(action: clearWithAnimation) {
-                    Image(systemName: "xmark").font(.system(size: 11, weight: .semibold))
-                }
-                .accessibilityLabel("Clear search and start over")
+                GhostIconButton(systemName: "xmark", size: 11, hitSize: 28,
+                                restColor: Tokens.muted, fill: true, action: clearWithAnimation)
+                    .accessibilityLabel("Clear search and start over")
             }
 
-            FieldGlyphButton(action: store.submitOrOpen) {
+            GhostIconButton(hitSize: 28, restColor: Tokens.muted, fill: true, action: store.submitOrOpen) {
                 ZStack {
                     Text("↵").font(.system(size: 15, weight: .medium)).opacity(searchInFlight ? 0 : 1)
                     ProgressView().controlSize(.mini).opacity(searchInFlight ? 1 : 0)
@@ -129,34 +129,6 @@ private struct CommandField: View {
         }
         .onAppear {
             focused = true
-        }
-    }
-}
-
-/// A borderless glyph button that lives INSIDE the search field (clear, submit) — no box at rest, so it
-/// reads as part of the field, not a nested control. Follows the SYSTEM hover vocabulary: on hover the
-/// glyph brightens `muted`→`text` AND a rounded `rowActive` fill appears (the same hover color the boxed
-/// icon controls use, minus the always-on border). 28×28 hit target (≥24 WCAG AA), pointing-hand cursor.
-private struct FieldGlyphButton<Label: View>: View {
-    let action: () -> Void
-    @ViewBuilder var label: Label
-    @State private var hovered = false
-
-    var body: some View {
-        Button(action: action) {
-            label
-                .foregroundStyle(hovered ? Tokens.text : Tokens.muted)
-                .frame(width: 28, height: 28)
-                .background(
-                    RoundedRectangle(cornerRadius: Tokens.radius, style: .continuous)
-                        .fill(hovered ? Tokens.rowActive : Color.clear)
-                )
-                .contentShape(Rectangle())
-        }
-        .buttonStyle(.plain)
-        .onHover { hovering in
-            hovered = hovering
-            if hovering { NSCursor.pointingHand.set() } else { NSCursor.arrow.set() }
         }
     }
 }
