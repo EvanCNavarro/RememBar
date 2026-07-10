@@ -195,6 +195,10 @@ struct OnePasswordCLIItemLister: OnePasswordItemListing {
             throw OnePasswordItemListError.unavailable
         } catch ProcessRunError.timedOut {
             throw OnePasswordItemListError.failed
+        } catch ProcessRunError.drainIncomplete {
+            // Couldn't read `op`'s full output (a descendant held stdout open) — fail loud, same as a
+            // timeout, so the source reports failed rather than a silent empty list.
+            throw OnePasswordItemListError.failed
         }
 
         guard result.terminationStatus == 0 else {

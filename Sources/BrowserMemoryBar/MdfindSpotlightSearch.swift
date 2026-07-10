@@ -113,7 +113,9 @@ struct MdfindSpotlightSearch: SpotlightSearching, Sendable {
             fields["error"] = String(describing: launchError)
             diagnostics.record(RememBarDiagnosticEvent.mdfindProcessLaunchFailed, level: .error, fields: fields)
             return launchError
-        case let ProcessRunError.timedOut(pid):
+        case let ProcessRunError.timedOut(pid), let ProcessRunError.drainIncomplete(pid):
+            // Both mean "couldn't get the process's full output in time" → the same fail-loud outcome
+            // (a failed source, never a silent empty result set).
             diagnostics.record(
                 RememBarDiagnosticEvent.mdfindProcessTimeout,
                 level: .error,

@@ -12,6 +12,11 @@ enum ProcessRunError: Error {
     case launchFailed(Error)
     case cancelledAfterLaunch(processID: Int32)
     case timedOut(processID: Int32)
+    /// The process exited but its output couldn't be drained to EOF within `drainGrace` — a surviving
+    /// descendant inherited and is holding the stdout/stderr write end open. We fail loud rather than
+    /// return the (empty) partial capture as success: for a search primitive, "couldn't finish reading"
+    /// must surface as an error, not a silent "0 results".
+    case drainIncomplete(processID: Int32)
 }
 
 /// The single CLI-process primitive. Spawns a process, drains its output, enforces a timeout, and
@@ -39,6 +44,10 @@ enum ProcessRunner {
         timeout: DispatchTimeInterval,
         state: RunningProcessState,
         separateStderr: Bool,
+        // How long to wait for the output drainers to reach EOF AFTER the process exits. Normally a
+        // formality (the reader signals in ms); generous by default so load-starvation can't false-fire.
+        // A lapse means a descendant is holding the pipe open → `.drainIncomplete`. Injectable for tests.
+        drainGrace: DispatchTimeInterval = .seconds(5),
         onWillLaunch: () -> Void = {},
         onLaunched: (Int32) -> Void = { _ in },
         onCancelRequestedAfterLaunch: (Int32) -> Void = { _ in }
@@ -88,8 +97,17 @@ enum ProcessRunner {
             try failTimedOut(process: process, finished: finished, drainers: drainers, pid: pid)
         }
 
-        _ = drainers.outDone.wait(timeout: .now() + .seconds(1))
-        _ = drainers.errDone?.wait(timeout: .now() + .seconds(1))
+        // Require the drainers to reach EOF (fully captured) before reporting success. A lapse means a
+        // surviving descendant holds the write end open — fail loud rather than return the empty capture
+        // as success. We do NOT close the read handle to force it: closing an fd whose background reader
+        // is blocked in `readDataToEndOfFile` is undocumented on Darwin (can hang or raise an uncaught
+        // exception in the GCD block). The blocked reader self-cleans when the descendant exits.
+        guard drainers.outDone.wait(timeout: .now() + drainGrace) == .success else {
+            throw ProcessRunError.drainIncomplete(processID: pid)
+        }
+        if let errDone = drainers.errDone, errDone.wait(timeout: .now() + drainGrace) != .success {
+            throw ProcessRunError.drainIncomplete(processID: pid)
+        }
 
         if state.isCancelled { throw ProcessRunError.cancelledAfterLaunch(processID: pid) }
 
