@@ -12,8 +12,10 @@ let package = Package(
     ],
     dependencies: [
         // Shared 400faces macOS design system — public + tagged, so CI (and any fresh clone) resolves it
-        // without a local checkout or credentials.
-        .package(url: "https://github.com/400faces/MacFaceKit.git", from: "0.1.0")
+        // without a local checkout or credentials. Pinned to the 0.3.x line: the app uses 0.3.1+ APIs
+        // (`ReleaseNotesParser.embeddedItems`, the shared `UpdateWindowController`), and up-to-next-minor
+        // keeps builds reproducible while still taking patch fixes. Bump deliberately for a 0.4+ kit.
+        .package(url: "https://github.com/400faces/MacFaceKit.git", .upToNextMinor(from: "0.3.2"))
     ],
     targets: [
         .executableTarget(

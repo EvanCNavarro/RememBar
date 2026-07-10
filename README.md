@@ -35,9 +35,10 @@ More sources will come over time — hence the *"and more."*
 There is **no AI and no account.** It's a fast local index search, not a chatbot.
 
 **Term families (aliases).** Group interchangeable words so searching any member also finds things
-named after the others (e.g. search `evan` and surface `ECN_*` files). Open the **?** panel → **"…"**
-→ **Term Families…** to add families and words in-app — edits apply to your next search immediately, no
-restart. Families work across files, history, and password managers.
+named after the others (e.g. search `evan` and surface `ECN_*` files). Click the **gear** icon next to
+the **?** in the search bar to open **Settings → Term Families**, and add families and words in-app —
+edits apply to your next search immediately, no restart. Families work across files, history, and
+password managers.
 
 Prefer a file? They're stored as `~/Library/Application Support/RememBar/aliases.json` (an array of
 string arrays); a hand-edit applies on the next launch:
@@ -107,6 +108,11 @@ swift test                        # run the test suite
 ./scripts/build-remembar-app.sh   # produces RememBar.app (embeds + signs Sparkle)
 ```
 
+RememBar also depends on **MacFaceKit** — the shared 400faces macOS design system (update-flow UI,
+icon buttons, tokens) — resolved automatically by SwiftPM from its public tagged release
+([github.com/400faces/MacFaceKit](https://github.com/400faces/MacFaceKit)). No extra setup; only
+Sparkle is vendored by hand (the one-time script above).
+
 Requires the Swift toolchain (Xcode 16+ / Swift 6) on macOS 14+.
 
 ## Roadmap
@@ -117,7 +123,7 @@ Requires the Swift toolchain (Xcode 16+ / Swift 6) on macOS 14+.
 - [x] One-click uninstall
 - [x] Editable, persistent search query (stays in the box like Spotlight)
 - [x] Live-as-you-type search (results as you type; Enter searches immediately)
-- [ ] Keyboard result navigation (arrow keys + Enter to open the selection)
+- [x] Keyboard result navigation (arrow keys move the highlight, Enter opens it, Esc clears)
 - [ ] Better onboarding & first-run guidance
 - [ ] Smoother update-flow animations
 - [ ] More sources beyond files / history / password managers
@@ -125,8 +131,8 @@ Requires the Swift toolchain (Xcode 16+ / Swift 6) on macOS 14+.
 
 ## Uninstall
 
-Open the **?** panel and click **"Remove RememBar…"** — it moves the app and its data (preferences,
-caches, the diagnostics log) to the Trash, then quits. Afterward, remove RememBar from
+Open **Settings** (the gear icon) → the **About** tab → **"Remove RememBar…"** — it moves the app and
+its data (preferences, caches, the diagnostics log) to the Trash, then quits. Afterward, remove RememBar from
 **System Settings → Privacy & Security → Full Disk Access** (macOS doesn't let an app revoke its own
 permission).
 

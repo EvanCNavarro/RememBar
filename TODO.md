@@ -10,10 +10,10 @@ Improve the experience first, *then* invest in Developer ID. Buckets (each to be
       what RememBar searches, and how to use it. Today it drops you at an empty search bar.
 - [ ] **Update-flow animations** — smoother transitions between the update dialog states
       (checking → available → downloading → ready). The morph exists; make it feel polished.
-- [ ] **Search** — the interaction and quality:
-      - Live-as-you-type (results per keystroke; Enter opens the selected result). The query already
-        persists in the field as of 0.3.2, so this is the next step toward the full launcher feel.
-      - Ranking / refinement improvements.
+- [ ] **Search quality** — live-as-you-type, keyboard nav, and the re-search feedback all shipped
+      (see "Done"). What's left: **ranking / frecency** (weight by recency + how often you pick a
+      result for a query), and a **product decision on click behavior** (see Nits below — clicking a
+      result currently copies; opening needs the arrow or Enter).
 - [ ] **More sources** beyond files / browser history / 1Password. The line: index searchable
       *metadata / names*, never secret *values* or file *contents*. Ranked by value-to-effort:
       - **Browser bookmarks** *(next — no new access/permission, fully testable)*. Firefox: same
@@ -45,6 +45,25 @@ Not before v0.5.0. Two problems, one fix — kept here so the rationale isn't lo
    sending those users to the wrong pane (Full Disk Access) and points them at the CLI setup docs
    instead, but *durable* password-manager results are gated here.
 
+## Nits & polish (from the 2026-07-10 audit — none blocking; pick any)
+Small, self-contained refinements. Build is green, 211 tests pass, lint is 0 — these are craft, not bugs.
+- [ ] **Product decision: clicking a result copies, it doesn't open.** The row's click action is
+      `select()` (copies to pasteboard + highlights); opening needs the trailing ↗ arrow or Enter.
+      Decide the model — row-click-opens (with a copy glyph), or keep click=copy — then make it
+      consistent. `ResultsView.swift` (row Button → `select`), `MemorySearchStore.select/open`.
+- [ ] **Delete vestigial `refinements`** on `MemorySearchStore` — only ever assigned `[]`, nothing
+      appends; drop the `@Published` property + the `!refinements.isEmpty` term in `canClearSearch`.
+      (The provider-level `refinements:` param is a wider sweep — leave unless doing it deliberately.)
+- [ ] **A11y:** the selected-row "copied" double-check glyph has no `accessibilityLabel` (VoiceOver
+      reads "checkmark, checkmark"); the open ↗ arrow hit target is 22×20, under the 24×24 the gear
+      already honors. `ResultsView.swift`.
+- [ ] **Unify the dim constant** — stale-results dim is `0.45` (`MemoryPanel.swift`) vs `0.46`
+      (`ResultsView.swift`); almost certainly meant to be one value → hoist to a shared constant.
+- [ ] **Stale doc comment** `Controls.swift:8` — `IconControlButton` is now only the settings gear +
+      pagination (clear/submit moved to MacFaceKit `GhostIconButton`; the "?" popover is gone).
+- [ ] **Missing early release notes** — `v0.1.0`/`v0.2.0` have tags but no `release-notes/*.md`
+      (pre-convention history; low priority).
+
 ## Considered and deferred (with rationale)
 - [ ] **Sensitive-path policy hardening** — gated on threat model; mdfind doesn't surface dot-dir
       secrets and leaf-name rules already cover indexed files. See `.engine/state/stoke-plan-remaining.md`.
@@ -64,6 +83,16 @@ Not before v0.5.0. Two problems, one fix — kept here so the rationale isn't lo
 - [x] **Live-as-you-type search (P1a).** Typing searches (debounced ~180 ms) through one dispatch
       pipeline; Enter searches immediately. Stale-while-revalidate (no blank/flicker), distinct
       no-results state, field stays editable during load. One re-entrancy invariant
-      (`query != baseQuery`) fixes retry/clear/whitespace re-entry. STOKE re-audit + code-review
-      (reproduced+fixed a stuck-loading bug) + 13 red-first tests. **Deferred next:** keyboard result
-      navigation (needs the focus-vs-TextField spike), then ranking/frecency.
+      (`query != baseQuery`) fixes retry/clear/whitespace re-entry.
+- [x] **Keyboard navigation.** ↑/↓ move a highlight through results (cross pages at the boundary,
+      no wrap); Enter opens the highlighted/top result when results match, else searches; Esc clears.
+      `.onKeyPress` on the focused field; store logic fully unit-tested.
+- [x] **Re-search feedback.** Overriding a query now dims the stale rows the instant the field
+      diverges (`resultsQuery`/`resultsAreStale`) + shows the bar spinner; no-results names the query.
+- [x] **Tabbed Settings window (0.4.1).** Real `NSWindow` hosting a `SettingsRootView` tab bar
+      (Term Families | About), reached from a gear in the search bar; About consolidated out of the
+      old "?" popover. (Chose a self-owned window over a SwiftUI `Settings` scene — cleaner close hook.)
+- [x] **MacFaceKit migration (unreleased, on `main` since v0.4.2).** Update-flow UI + icon buttons +
+      tokens + `ReleaseNotesParser` extracted to the shared `github.com/400faces/MacFaceKit` package;
+      `RememBarUserDriver` is now a thin adapter over the kit's `UpdateWindowController`. Four commits
+      on `main` past v0.4.2 → **cut v0.4.3 when ready** (behavior-preserving refactor, worth a note).
